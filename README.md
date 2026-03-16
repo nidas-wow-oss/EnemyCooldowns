@@ -10,6 +10,9 @@
 
 PvP addon that tracks enemy cooldowns in real time. Built on top of the original **Enemy Cooldowns** addon — almost entirely rewritten: bugs fixed, core rewritten, and a full configuration menu added that the original never had.
 
+<img width="600" height="407" alt="Image" src="https://github.com/user-attachments/assets/2956d5a7-27d3-46d1-af0a-a687d941db3b" />
+<img width="1320" height="862" alt="Image" src="https://github.com/user-attachments/assets/bbfc9c27-be7d-4c01-b157-f40f947ac611" />
+
 ---
 
 ## Features
