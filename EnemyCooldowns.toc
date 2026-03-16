@@ -1,0 +1,15 @@
+## Interface: 30300
+## Title: Enemy Cooldowns
+## Author: Nidhaus
+## Notes: Tracks enemy cooldown usage in PvP.
+## SavedVariables: EnemyCooldownsDB
+
+locale.lua
+locales\esES.lua
+
+spells.lua
+table.lua
+config.lua
+frame_icon.lua
+frame_group.lua
+main.lua
