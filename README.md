@@ -8,46 +8,46 @@
 
 ## About
 
-Addon de PvP que trackea los cooldowns enemigos en tiempo real. Tomé como base el addon original **Enemy Cooldowns** y lo rehice casi por completo: corregí bugs, reescribí el core, y agregué un menú de configuración completo que el original no tenía.
+PvP addon that tracks enemy cooldowns in real time. Built on top of the original **Enemy Cooldowns** addon — almost entirely rewritten: bugs fixed, core rewritten, and a full configuration menu added that the original never had.
 
 ---
 
 ## Features
 
-- Trackea cooldowns de todas las clases (raciales, trinkets, defensivos, interrupts, CC, movilidad)
-- Maneja resets de cooldowns (Preparation, Cold Snap, Metamorphosis)
-- Menú de configuración in-game (`/ecd`) con tema azul y sliders estilo NUF
-- Layout configurable: iconos por columna, espaciado X/Y, separación entre grupos, escala global
-- Fuentes configurables para nombres y timers (con outline y tamaño)
-- Colores por tiempo restante (>10s, ≤10s, ≤3s) con color picker
-- Orden de cooldowns: por uso reciente, tiempo restante ascendente/descendente
-- Activar/desactivar por zona: Arena, Battleground, Mundo
-- Toggle de cooldown swipe overlay
-- Botón Reset All que restaura todo a defaults sin necesidad de /reload
-- Localización: inglés por defecto, español incluido (auto-detecta el cliente)
-- Limpieza automática de memoria (GUIDs inactivos)
+- Tracks cooldowns for every class (racials, trinkets, defensives, interrupts, CC, mobility)
+- Handles cooldown resets (Preparation, Cold Snap, Metamorphosis)
+- In-game configuration menu (`/ecd`) with blue theme and NUF-style sliders
+- Configurable layout: icons per column, X/Y spacing, group gap, global scale
+- Configurable fonts for player names and timers (with outline and size)
+- Color by remaining time (>10s, ≤10s, ≤3s) with color picker
+- Sort order: by cast time, remaining ascending/descending
+- Enable/disable per zone: Arena, Battleground, World
+- Cooldown swipe overlay toggle
+- Reset All button restores defaults without /reload
+- Localization: English by default, Spanish included (auto-detected)
+- Automatic memory cleanup of stale GUIDs
 
 ---
 
-## Comandos
+## Commands
 
-| Comando | Qué hace |
-|---------|----------|
-| `/ecd` | Abrir configuración |
-| `/ecd lock` | Bloquear posición |
-| `/ecd unlock` | Desbloquear y mostrar handle |
-| `/ecd reset` | Resetear posición |
-| `/ecd resetall` | Resetear TODA la configuración |
-
----
-
-## Instalación
-
-Copiar la carpeta `EnemyCooldowns` en `Interface/AddOns/` y reiniciar el juego.
+| Command | Description |
+|---------|-------------|
+| `/ecd` | Open configuration |
+| `/ecd lock` | Lock frame position |
+| `/ecd unlock` | Unlock and show drag handle |
+| `/ecd reset` | Reset position |
+| `/ecd resetall` | Reset ALL settings to defaults |
 
 ---
 
-## Créditos
+## Installation
 
-- **Base:** Enemy Cooldowns (autor original desconocido)
+Copy the `EnemyCooldowns` folder into `Interface/AddOns/` and restart the game.
+change name to EnemyCooldowns to
+---
+
+## Credits
+
+- **Base:** Enemy Cooldowns (original author unknown)
 - **Enhanced edition:** Nidhaus
