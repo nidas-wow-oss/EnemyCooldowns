@@ -407,34 +407,47 @@ function engine:CreateConfigMenu()
     configFrame:SetScript("OnDragStop", configFrame.StopMovingOrSizing)
     configFrame:SetFrameStrata("DIALOG")
     configFrame:SetBackdrop({
-        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
-        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-        tile = true, tileSize = 32, edgeSize = 32,
-        insets = {left = 11, right = 12, top = 12, bottom = 11},
+        bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true, tileSize = 16, edgeSize = 16,
+        insets = {left = 5, right = 5, top = 5, bottom = 5},
     })
-    configFrame:SetBackdropColor(0.06, 0.08, 0.14, 0.95)
-    configFrame:SetBackdropBorderColor(0.3, 0.5, 0.8, 1)
+    configFrame:SetBackdropColor(0.028, 0.048, 0.095, 0.97)
+    configFrame:SetBackdropBorderColor(0.22, 0.52, 0.92, 0.95)
     table.insert(UISpecialFrames, "EnemyCooldownsConfig")
 
-    local bar = configFrame:CreateTexture(nil, "ARTWORK")
-    bar:SetTexture(THEME_BG.r, THEME_BG.g, THEME_BG.b, 0.8)
-    bar:SetPoint("TOPLEFT", 12, -12); bar:SetPoint("TOPRIGHT", -12, -12); bar:SetHeight(28)
+    -- titleBox: narrow, centered, protrudes above the frame top (NUF style)
+    local titleBox = CreateFrame("Frame", nil, configFrame)
+    titleBox:SetWidth(260)
+    titleBox:SetHeight(36)
+    titleBox:SetPoint("BOTTOM", configFrame, "TOP", 0, -20)
+    titleBox:SetFrameLevel(configFrame:GetFrameLevel() + 2)
+    titleBox:SetBackdrop({
+        bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true, tileSize = 16, edgeSize = 16,
+        insets = {left = 4, right = 4, top = 4, bottom = 4},
+    })
+    titleBox:SetBackdropColor(0.035, 0.065, 0.140, 1.0)
+    titleBox:SetBackdropBorderColor(0.28, 0.68, 1.0, 1.0)
 
-    configFrame.title = configFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    configFrame.title:SetPoint("TOP", 0, -16)
-    configFrame.title:SetTextColor(THEME_BLUE.r, THEME_BLUE.g, THEME_BLUE.b)
+    configFrame.title = titleBox:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    configFrame.title:SetPoint("CENTER", titleBox, "CENTER", 0, 0)
+    configFrame.title:SetTextColor(1.0, 0.82, 0.0)   -- gold/yellow like NUF
     configFrame.title:SetText("Enemy Cooldowns")
 
+    -- Subtitle sits below the titleBox, on the main frame (outside the box)
     local sub = configFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    sub:SetPoint("TOP", configFrame.title, "BOTTOM", 0, -2)
-    sub:SetTextColor(0.45, 0.55, 0.65); sub:SetText("Cooldown Tracker & PvP Tools")
+    sub:SetPoint("TOP", configFrame, "TOP", 0, -20)
+    sub:SetTextColor(0.45, 0.55, 0.65)
+    sub:SetText("Cooldown Tracker & PvP Tools")
 
     local closeBtn = CreateFrame("Button", nil, configFrame, "UIPanelCloseButton")
     closeBtn:SetPoint("TOPRIGHT", -5, -5)
     closeBtn:SetScript("OnClick", function() configFrame:Hide() end)
 
     local sf = CreateFrame("ScrollFrame", "ECDConfigScroll", configFrame, "UIPanelScrollFrameTemplate")
-    sf:SetPoint("TOPLEFT", 10, -50); sf:SetPoint("BOTTOMRIGHT", -28, 10)
+    sf:SetPoint("TOPLEFT", 10, -38); sf:SetPoint("BOTTOMRIGHT", -28, 10)
     local sc = CreateFrame("Frame"); sc:SetSize(430, 1400); sf:SetScrollChild(sc)
 
     local y = -4
@@ -469,11 +482,6 @@ function engine:CreateConfigMenu()
     resetAllBtn:SetScript("OnClick", function() StaticPopup_Show("ECD_CONFIRM_RESET_ALL") end)
 
     y = y - 30
-
-    W.namesCheck = CreateCheck(sc, LEFT, y, L["SHOW_ENEMY_NAMES"] or "Show enemy names",
-        EnemyCooldownsDB.showEnemyNames ~= false,
-        function(v) EnemyCooldownsDB.showEnemyNames = v; engine:ApplyNameVisibilityToAll() end)
-    y = y - 34
 
     -- ==================== LAYOUT ====================
     y = CreateSection(sc, L["SECTION_LAYOUT"] or "Layout", y)
