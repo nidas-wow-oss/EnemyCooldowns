@@ -6,7 +6,7 @@
 ## SavedVariables: EnemyCooldownsDB
 
 locale.lua
-locales\esES.lua
+esES.lua
 
 spells.lua
 table.lua
