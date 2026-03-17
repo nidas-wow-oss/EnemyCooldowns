@@ -433,10 +433,10 @@ function engine:CreateConfigMenu()
 
     configFrame.title = titleBox:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     configFrame.title:SetPoint("CENTER", titleBox, "CENTER", 0, 0)
-    configFrame.title:SetTextColor(1.0, 0.82, 0.0)   -- gold/yellow like NUF
+    configFrame.title:SetTextColor(1.0, 0.82, 0.0)
     configFrame.title:SetText("Enemy Cooldowns")
 
-    -- Subtitle sits below the titleBox, on the main frame (outside the box)
+    -- Subtitle sits below titleBox, outside the box on the main frame
     local sub = configFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     sub:SetPoint("TOP", configFrame, "TOP", 0, -20)
     sub:SetTextColor(0.45, 0.55, 0.65)
@@ -541,6 +541,10 @@ function engine:CreateConfigMenu()
     W.pNameSize = CreateNUFSlider(sc, "ECDPNameSize", LEFT, y, HW, 8, 19, 1,
         EnemyCooldownsDB.playerNameSettings.fontSize or 12, L["FONT_SIZE"] or "Font Size",
         function(v) EnemyCooldownsDB.playerNameSettings.fontSize = v; engine:UpdateAllPlayerNameFonts() end)
+
+    W.namesCheck = CreateCheck(sc, RIGHT, y - 8, L["SHOW_ENEMY_NAMES"] or "Show enemy names",
+        EnemyCooldownsDB.showEnemyNames ~= false,
+        function(v) EnemyCooldownsDB.showEnemyNames = v; engine:ApplyNameVisibilityToAll() end)
     y = y - 52
 
     -- ==================== TIMER SETTINGS ====================
