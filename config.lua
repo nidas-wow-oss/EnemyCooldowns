@@ -280,7 +280,7 @@ local function CreateNUFSlider(parent, name, x, y, width, minV, maxV, step, curV
     tf:SetSize(width, 14); tf:SetPoint("TOPLEFT", x, y)
     local tfs = tf:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     tfs:SetPoint("TOP", tf, "TOP", 0, 0)
-    tfs:SetTextColor(THEME_CYAN.r, THEME_CYAN.g, THEME_CYAN.b)
+    tfs:SetTextColor(1, 1, 1)
     tfs:SetText(title)
 
     local slider = CreateFrame("Slider", name, parent, "OptionsSliderTemplate")
