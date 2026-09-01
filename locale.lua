@@ -7,19 +7,25 @@ local L = {}
 engine.L = L
 
 -- Addon messages
-L["ADDON_LOADED"]       = "|cff00ff00[Enemy Cooldowns]|r Loaded! Use /ecd"
-L["ADDON_ENABLED"]      = "|cff00ff00[Enemy Cooldowns]|r Enabled"
-L["ADDON_DISABLED"]     = "|cff00ff00[Enemy Cooldowns]|r Disabled"
-L["FRAME_LOCKED"]       = "|cff00ff00[Enemy Cooldowns]|r Frame locked"
-L["FRAME_UNLOCKED"]     = "|cff00ff00[Enemy Cooldowns]|r Frame unlocked - Drag to reposition"
-L["POSITION_RESET"]     = "|cff00ff00[Enemy Cooldowns]|r Position reset"
+L["ADDON_LOADED"]       = "|cff4fc3f7[Enemy Cooldowns]|r Loaded! Use /ecd"
+L["ADDON_ENABLED"]      = "|cff4fc3f7[Enemy Cooldowns]|r Enabled"
+L["ADDON_DISABLED"]     = "|cff4fc3f7[Enemy Cooldowns]|r Disabled"
+L["FRAME_LOCKED"]       = "|cff4fc3f7[Enemy Cooldowns]|r Frame locked"
+L["FRAME_UNLOCKED"]     = "|cff4fc3f7[Enemy Cooldowns]|r Frame unlocked - Drag to reposition"
+L["POSITION_RESET"]     = "|cff4fc3f7[Enemy Cooldowns]|r Position reset"
 
 -- Slash commands help
-L["CMD_HEADER"]         = "|cff00ff00[Enemy Cooldowns]|r Commands:"
+L["CMD_HEADER"]         = "|cff4fc3f7[Enemy Cooldowns]|r Commands:"
 L["CMD_CONFIG"]         = "  /ecd config - Open configuration menu"
 L["CMD_LOCK"]           = "  /ecd lock - Lock frame position"
 L["CMD_UNLOCK"]         = "  /ecd unlock - Unlock frame position"
 L["CMD_RESET"]          = "  /ecd reset - Reset position"
+L["CMD_TEST"]           = "  /ecd test - Toggle test mode (30 fake cooldowns)"
+L["TEST_MODE_BTN"]      = "Test Mode"
+L["FIXED_GROUPS"]       = "Fixed positions"
+L["FIXED_GROUPS_TIP"]   = "Keeps each enemy's cooldown group in place when you change target (no reordering)."
+L["TEST_ON"]            = "|cff4fc3f7[Enemy Cooldowns]|r Test mode ON"
+L["TEST_OFF"]           = "|cff4fc3f7[Enemy Cooldowns]|r Test mode OFF"
 
 -- Config panel: section titles (color applied by config.lua, so no color codes here)
 L["CONFIG_TITLE"]       = "Enemy Cooldowns"

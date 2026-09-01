@@ -9,8 +9,8 @@ local L
 local W = {}
 
 -- Theme
-local THEME_BLUE = {r = 0.30, g = 0.65, b = 1.0}
-local THEME_CYAN = {r = 0.40, g = 0.85, b = 1.0}
+local THEME_BLUE = {r = 0.31, g = 0.76, b = 0.97}  -- 4fc3f7 (headers, unificado)
+local THEME_CYAN = {r = 0.31, g = 0.76, b = 0.97}  -- 4fc3f7 (labels, unificado)
 local THEME_LINE = {r = 0.20, g = 0.50, b = 0.80}
 local THEME_BG   = {r = 0.05, g = 0.10, b = 0.18}
 
@@ -37,6 +37,7 @@ local defaults = {
     position = { point = "CENTER", x = 0, y = 200 },
     locked = true,
     showEnemyNames = true,
+    fixedGroups = false,
     sortMode = "cast",
     iconsPerColumn = 6,
     groupsOffset = 22,
@@ -102,6 +103,7 @@ local function UpdateAllWidgets()
     if W.namesCheck then W.namesCheck:SetChecked(db.showEnemyNames ~= false) end
     if W.colorCheck then W.colorCheck:SetChecked(db.timerSettings.useColorByTime) end
     if W.swipeCheck then W.swipeCheck:SetChecked(db.showCooldownSwipe ~= false) end
+    if W.fixedCheck then W.fixedCheck:SetChecked(db.fixedGroups == true) end
     if W.arenaCheck then W.arenaCheck:SetChecked(db.enabledZones.arena) end
     if W.bgCheck    then W.bgCheck:SetChecked(db.enabledZones.battleground) end
     if W.worldCheck then W.worldCheck:SetChecked(db.enabledZones.world) end
@@ -174,7 +176,7 @@ function engine:ResetAllDefaults()
 
     UpdateAllWidgets()
 
-    print("|cff00ff00[Enemy Cooldowns]|r " .. (L["ALL_RESET"] or "All settings reset to defaults"))
+    print("|cff4fc3f7[Enemy Cooldowns]|r " .. (L["ALL_RESET"] or "All settings reset to defaults"))
 end
 
 ------------------------------------------------------------------------
@@ -186,17 +188,36 @@ function engine:CreateAnchorFrame()
     anchorFrame:SetSize(200, 40)
     anchorFrame:SetPoint(EnemyCooldownsDB.position.point, UIParent, EnemyCooldownsDB.position.point, EnemyCooldownsDB.position.x, EnemyCooldownsDB.position.y)
 
-    local bg = anchorFrame:CreateTexture(nil, "BACKGROUND")
+    anchorFrame:SetMovable(true)
+    anchorFrame:EnableMouse(false)
+
+    -- ASA DE ARRASTRE, POR ENCIMA del anchor.
+    -- Antes el cuadro negro con el titulo ocupaba el anchor entero y quedaba
+    -- justo sobre los iconos, tapandolos mientras acomodabas. Ahora es un
+    -- frame aparte, apoyado ARRIBA del anchor: se arrastra desde ahi y los
+    -- cooldowns quedan siempre a la vista.
+    local handle = CreateFrame("Frame", "EnemyCooldownsDragHandle", anchorFrame)
+    handle:SetSize(200, 26)
+    handle:SetPoint("BOTTOM", anchorFrame, "TOP", 0, 8)
+    handle:EnableMouse(false)
+    handle:RegisterForDrag("LeftButton")
+    anchorFrame.dragHandle = handle
+
+    local bg = handle:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints(); bg:SetTexture(0, 0, 0, 0.7); bg:Hide()
     anchorFrame.bg = bg
 
-    local text = anchorFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    local text = handle:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     text:SetPoint("CENTER"); text:SetText(L and L["ANCHOR_LABEL"] or "Enemy Cooldowns"); text:Hide()
     anchorFrame.text = text
 
-    anchorFrame:SetMovable(true); anchorFrame:EnableMouse(false); anchorFrame:RegisterForDrag("LeftButton")
-    anchorFrame:SetScript("OnDragStart", function(self) if not EnemyCooldownsDB.locked then self:StartMoving(); isDragging = true end end)
-    anchorFrame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing(); isDragging = false; engine:SavePosition() end)
+    -- El arrastre lo inicia el asa, pero lo que se mueve es el anchor.
+    handle:SetScript("OnDragStart", function()
+        if not EnemyCooldownsDB.locked then anchorFrame:StartMoving(); isDragging = true end
+    end)
+    handle:SetScript("OnDragStop", function()
+        anchorFrame:StopMovingOrSizing(); isDragging = false; engine:SavePosition()
+    end)
 end
 
 function engine:SavePosition()
@@ -211,18 +232,25 @@ function engine:GetAnchorFrame() return anchorFrame end
 ------------------------------------------------------------------------
 -- Lock / Unlock
 ------------------------------------------------------------------------
+-- MODO MOVER = MODO TEST (un solo estado)
+-- Antes eran dos botones separados: uno desbloqueaba y otro mostraba los
+-- iconos de prueba, asi que para acomodar el frame habia que acordarse de
+-- prender los dos. Ahora desbloquear enciende el test automaticamente (para
+-- ver que estas moviendo) y bloquear lo apaga.
 function engine:ToggleLock()
     EnemyCooldownsDB.locked = not EnemyCooldownsDB.locked
+    local handle = anchorFrame.dragHandle or anchorFrame
     if EnemyCooldownsDB.locked then
-        anchorFrame:EnableMouse(false); anchorFrame.bg:Hide(); anchorFrame.text:Hide()
-        print(L["FRAME_LOCKED"])
+        handle:EnableMouse(false); anchorFrame.bg:Hide(); anchorFrame.text:Hide()
+        if self.StopTestMode then self:StopTestMode() end
     else
-        anchorFrame:EnableMouse(true); anchorFrame.bg:Show(); anchorFrame.text:Show()
-        print(L["FRAME_UNLOCKED"])
+        handle:EnableMouse(true); anchorFrame.bg:Show(); anchorFrame.text:Show()
+        if self.StartTestMode then self:StartTestMode() end
     end
     if W.lockBtn then
         W.lockBtn:SetText(EnemyCooldownsDB.locked and (L["UNLOCK_FRAME"] or "Unlock Frame") or (L["LOCK_FRAME"] or "Lock Frame"))
     end
+    if W.RefreshTestBtn then W.RefreshTestBtn() end
 end
 
 ------------------------------------------------------------------------
@@ -280,7 +308,7 @@ local function CreateNUFSlider(parent, name, x, y, width, minV, maxV, step, curV
     tf:SetSize(width, 14); tf:SetPoint("TOPLEFT", x, y)
     local tfs = tf:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     tfs:SetPoint("TOP", tf, "TOP", 0, 0)
-    tfs:SetTextColor(1, 1, 1)
+    tfs:SetTextColor(0.31, 0.76, 0.97)  -- 4fc3f7
     tfs:SetText(title)
 
     local slider = CreateFrame("Slider", name, parent, "OptionsSliderTemplate")
@@ -315,13 +343,45 @@ local function CreateNUFSlider(parent, name, x, y, width, minV, maxV, step, curV
     return slider
 end
 
-local function CreateCheck(parent, x, y, labelText, checked, onClick)
+local function CreateCheck(parent, x, y, labelText, checked, onClick, tooltipText)
     local cb = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
     cb:SetPoint("TOPLEFT", x, y); cb:SetSize(22, 22); cb:SetChecked(checked)
     local t = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     t:SetPoint("LEFT", cb, "RIGHT", 2, 0); t:SetText(labelText); t:SetTextColor(0.9, 0.9, 0.9)
     cb:SetScript("OnClick", function(self) onClick(self:GetChecked() and true or false) end)
+    if tooltipText then
+        cb:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(labelText, 1.0, 0.84, 0.0)
+            GameTooltip:AddLine(tooltipText, 0.9, 0.9, 0.9, true)
+            GameTooltip:Show()
+        end)
+        cb:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    end
     return cb
+end
+
+-- Flat themed button (matches panel style; red template reserved for destructive actions)
+local function CreateThemeButton(parent, w, h, text)
+    local btn = CreateFrame("Button", nil, parent)
+    btn:SetSize(w, h)
+    btn:SetBackdrop({
+        bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true, tileSize = 16, edgeSize = 12,
+        insets = {left = 3, right = 3, top = 3, bottom = 3},
+    })
+    btn:SetBackdropColor(0.05, 0.10, 0.20, 1.0)
+    btn:SetBackdropBorderColor(0.28, 0.52, 0.92, 0.9)
+
+    local fs = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    fs:SetPoint("CENTER", 0, 0)
+    btn:SetFontString(fs)
+    btn:SetText(text)
+
+    btn:SetScript("OnEnter", function(s) s:SetBackdropColor(0.10, 0.20, 0.38, 1.0) end)
+    btn:SetScript("OnLeave", function(s) s:SetBackdropColor(0.05, 0.10, 0.20, 1.0) end)
+    return btn
 end
 
 -- FIX #1 & #4: getSelected is a FUNCTION that reads from DB every time the dropdown opens
@@ -433,13 +493,13 @@ function engine:CreateConfigMenu()
 
     configFrame.title = titleBox:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     configFrame.title:SetPoint("CENTER", titleBox, "CENTER", 0, 0)
-    configFrame.title:SetTextColor(1.0, 0.82, 0.0)
+    configFrame.title:SetTextColor(1.0, 0.84, 0.0)  -- FFD700
     configFrame.title:SetText("Enemy Cooldowns")
 
     -- Subtitle sits below titleBox, outside the box on the main frame
     local sub = configFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     sub:SetPoint("TOP", configFrame, "TOP", 0, -20)
-    sub:SetTextColor(0.45, 0.55, 0.65)
+    sub:SetTextColor(0.67, 0.67, 0.67)  -- aaaaaa
     sub:SetText("Cooldown Tracker & PvP Tools")
 
     local closeBtn = CreateFrame("Button", nil, configFrame, "UIPanelCloseButton")
@@ -460,14 +520,13 @@ function engine:CreateConfigMenu()
     -- ==================== FRAME POSITION ====================
     y = CreateSection(sc, L["SECTION_POSITION"] or "Frame Position", y)
 
-    W.lockBtn = CreateFrame("Button", nil, sc, "GameMenuButtonTemplate")
-    W.lockBtn:SetSize(125, 24); W.lockBtn:SetPoint("TOPLEFT", LEFT, y)
-    W.lockBtn:SetText(EnemyCooldownsDB.locked and (L["UNLOCK_FRAME"] or "Unlock Frame") or (L["LOCK_FRAME"] or "Lock Frame"))
+    W.lockBtn = CreateThemeButton(sc, 125, 24,
+        EnemyCooldownsDB.locked and (L["UNLOCK_FRAME"] or "Unlock Frame") or (L["LOCK_FRAME"] or "Lock Frame"))
+    W.lockBtn:SetPoint("TOPLEFT", LEFT, y)
     W.lockBtn:SetScript("OnClick", function() engine:ToggleLock() end)
 
-    local resetBtn = CreateFrame("Button", nil, sc, "GameMenuButtonTemplate")
-    resetBtn:SetSize(125, 24); resetBtn:SetPoint("LEFT", W.lockBtn, "RIGHT", 6, 0)
-    resetBtn:SetText(L["RESET_POSITION"] or "Reset Position")
+    local resetBtn = CreateThemeButton(sc, 125, 24, L["RESET_POSITION"] or "Reset Position")
+    resetBtn:SetPoint("LEFT", W.lockBtn, "RIGHT", 6, 0)
     resetBtn:SetScript("OnClick", function()
         EnemyCooldownsDB.position = DeepCopy(defaults.position)
         anchorFrame:ClearAllPoints()
@@ -475,11 +534,36 @@ function engine:CreateConfigMenu()
         engine:UpdatePositions()
     end)
 
+    -- Destructive action: keeps the red game-menu style on purpose
     local resetAllBtn = CreateFrame("Button", nil, sc, "GameMenuButtonTemplate")
     resetAllBtn:SetSize(125, 24); resetAllBtn:SetPoint("LEFT", resetBtn, "RIGHT", 6, 0)
     resetAllBtn:SetText(L["RESET_ALL"] or "Reset All")
     resetAllBtn:GetFontString():SetTextColor(1, 0.4, 0.4)
     resetAllBtn:SetScript("OnClick", function() StaticPopup_Show("ECD_CONFIRM_RESET_ALL") end)
+
+    y = y - 30
+
+    local function RefreshTestBtn()
+        local base = L["TEST_MODE_BTN"] or "Test Mode"
+        if engine:IsTestModeActive() then
+            W.testBtn:SetText(base .. ": |cff00ff99ON|r")
+            W.testBtn:SetBackdropBorderColor(0.0, 0.85, 0.55, 1.0)
+        else
+            W.testBtn:SetText(base .. ": |cffaaaaaaOFF|r")
+            W.testBtn:SetBackdropBorderColor(0.28, 0.52, 0.92, 0.9)
+        end
+    end
+    -- Se expone para que ToggleLock pueda refrescar este boton: el modo
+    -- mover y el modo test son ahora el mismo estado.
+    W.RefreshTestBtn = RefreshTestBtn
+
+    W.testBtn = CreateThemeButton(sc, 256, 24, "")
+    W.testBtn:SetPoint("TOPLEFT", LEFT, y)
+    W.testBtn:SetScript("OnClick", function()
+        -- El test tambien desbloquea/bloquea, para que sean un solo modo.
+        engine:ToggleLock()
+    end)
+    RefreshTestBtn()
 
     y = y - 30
 
@@ -520,6 +604,11 @@ function engine:CreateConfigMenu()
     W.scale = CreateNUFSlider(sc, "ECDScale", LEFT, y, HW, 0.5, 2.0, 0.05,
         EnemyCooldownsDB.scale or 1.0, L["SCALE"] or "Scale",
         function(v) EnemyCooldownsDB.scale = v; engine:ApplyScaleToAll() end)
+
+    W.fixedCheck = CreateCheck(sc, RIGHT, y - 8, L["FIXED_GROUPS"] or "Fixed positions",
+        EnemyCooldownsDB.fixedGroups == true,
+        function(v) EnemyCooldownsDB.fixedGroups = v end,
+        L["FIXED_GROUPS_TIP"] or "Keeps each enemy's cooldown group in place when you change target (no reordering).")
     y = y - 52
 
     -- ==================== PLAYER NAME FONT ====================
@@ -577,9 +666,11 @@ function engine:CreateConfigMenu()
         function(v) EnemyCooldownsDB.showCooldownSwipe = v; engine:UpdateAllCooldownSwipes() end)
     y = y - 32
 
-    CreateColorBtn(sc, L["COLOR_NORMAL"]  or "Normal (>10s):",   LEFT, y, "colorNormal"); y = y - 22
-    CreateColorBtn(sc, L["COLOR_WARNING"] or "Warning (<=10s):", LEFT, y, "color10s"); y = y - 22
-    CreateColorBtn(sc, L["COLOR_URGENT"]  or "Urgent (<=3s):",   LEFT, y, "color3s"); y = y - 34
+    -- Color swatches in a single row
+    CreateColorBtn(sc, L["COLOR_NORMAL"]  or "Normal (>10s):",   LEFT, y, "colorNormal")
+    CreateColorBtn(sc, L["COLOR_WARNING"] or "Warning (<=10s):", LEFT + 150, y, "color10s")
+    CreateColorBtn(sc, L["COLOR_URGENT"]  or "Urgent (<=3s):",   LEFT + 300, y, "color3s")
+    y = y - 32
 
     -- ==================== ZONES ====================
     y = CreateSection(sc, L["SECTION_ZONES"] or "Enable In:", y)
@@ -614,13 +705,11 @@ SlashCmdList["ENEMYCOOLDOWNS"] = function(msg)
     if msg == "config" or msg == "" then
         engine:CreateConfigMenu(); configFrame:Show()
     elseif msg == "lock" then
-        EnemyCooldownsDB.locked = true
-        anchorFrame:EnableMouse(false); anchorFrame.bg:Hide(); anchorFrame.text:Hide()
-        print(L["FRAME_LOCKED"])
+        -- Se pasa por ToggleLock para que el modo test siga el mismo estado
+        -- (y el asa de arrastre se muestre/oculte bien).
+        if not EnemyCooldownsDB.locked then engine:ToggleLock() end
     elseif msg == "unlock" then
-        EnemyCooldownsDB.locked = false
-        anchorFrame:EnableMouse(true); anchorFrame.bg:Show(); anchorFrame.text:Show()
-        print(L["FRAME_UNLOCKED"])
+        if EnemyCooldownsDB.locked then engine:ToggleLock() end
     elseif msg == "reset" then
         EnemyCooldownsDB.position = DeepCopy(defaults.position)
         anchorFrame:ClearAllPoints()
@@ -629,9 +718,16 @@ SlashCmdList["ENEMYCOOLDOWNS"] = function(msg)
         print(L["POSITION_RESET"])
     elseif msg == "resetall" then
         StaticPopup_Show("ECD_CONFIRM_RESET_ALL")
+    elseif msg == "test" then
+        if engine:ToggleTestMode() then
+            print(L["TEST_ON"] or "|cff4fc3f7[Enemy Cooldowns]|r Test mode ON")
+        else
+            print(L["TEST_OFF"] or "|cff4fc3f7[Enemy Cooldowns]|r Test mode OFF")
+        end
     else
         print(L["CMD_HEADER"]); print(L["CMD_CONFIG"]); print(L["CMD_LOCK"])
         print(L["CMD_UNLOCK"]); print(L["CMD_RESET"])
         print(L["CMD_RESETALL"] or "  /ecd resetall - Reset all settings to defaults")
+        print(L["CMD_TEST"] or "  /ecd test - Toggle test mode (10 fake cooldowns)")
     end
 end

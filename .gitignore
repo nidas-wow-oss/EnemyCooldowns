@@ -1,0 +1,9 @@
+# Comprimidos y respaldos
+*.rar
+*.zip
+*.7z
+*.bak
+
+# Sistema
+Thumbs.db
+desktop.ini

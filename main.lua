@@ -4,6 +4,12 @@ local COMBATLOG_OBJECT_REACTION_NEUTRAL = COMBATLOG_OBJECT_REACTION_NEUTRAL
 local COMBATLOG_OBJECT_REACTION_HOSTILE = COMBATLOG_OBJECT_REACTION_HOSTILE
 local COMBATLOG_OBJECT_REACTION_MASK = COMBATLOG_OBJECT_REACTION_MASK
 
+-- Affiliation flags: used to filter out party/raid members under Mind Control
+local COMBATLOG_OBJECT_AFFILIATION_MINE  = COMBATLOG_OBJECT_AFFILIATION_MINE
+local COMBATLOG_OBJECT_AFFILIATION_PARTY = COMBATLOG_OBJECT_AFFILIATION_PARTY
+local COMBATLOG_OBJECT_AFFILIATION_RAID  = COMBATLOG_OBJECT_AFFILIATION_RAID
+local COMBATLOG_OBJECT_AFFILIATION_MASK  = COMBATLOG_OBJECT_AFFILIATION_MASK
+
 local CLASS2HEXCOLOR = {}
 local SPELLS, RESETTERS = engine.SPELLS, engine.RESETTERS
 local table = engine.table
@@ -113,8 +119,6 @@ function engine:EnableAddon()
     eventFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
     eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
 
-    local L = engine.L
-    if L then print(L["ADDON_ENABLED"]) end
 end
 
 function engine:DisableAddon()
@@ -125,6 +129,7 @@ function engine:DisableAddon()
     eventFrame:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
     eventFrame:UnregisterEvent("PLAYER_TARGET_CHANGED")
 
+    testModeActive = false
     self:ReleaseAllTrackers()
     self:ResetCooldownInfo()
 
@@ -242,7 +247,8 @@ function engine:SpawnTracker(key, displayName)
     tracker:Initialize(key, displayName)
     trackers[key] = tracker
 
-    if key == targetGUID then
+    local fixed = EnemyCooldownsDB and EnemyCooldownsDB.fixedGroups
+    if key == targetGUID and not fixed then
         table.insert(trackersOrder, 1, key)
     else
         table.insert(trackersOrder, key)
@@ -308,6 +314,87 @@ function engine:UpdatePositions()
 end
 
 ------------------------------------------------------------------------
+-- Test mode: shows 30 fake cooldowns (10 Mage + 10 Warrior + 10 DK)
+------------------------------------------------------------------------
+local testModeActive = false
+local TEST_UNITS = {
+    {
+        guid = "ECD-TEST-MAGE",
+        name = "TestMage",
+        class = "MAGE",
+        -- Ice Block, Evocation, Cold Snap, Deep Freeze, Counterspell,
+        -- Blink, Ice Barrier, Dragon's Breath, Blast Wave, Arcane Power
+        spells = {45438, 12051, 11958, 44572, 2139, 1953, 43039, 42950, 42945, 12042},
+    },
+    {
+        guid = "ECD-TEST-WARRIOR",
+        name = "TestWarrior",
+        class = "WARRIOR",
+        -- Shield Wall, Recklessness, Death Wish, Bladestorm, Disarm,
+        -- Spell Reflection, Intimidating Shout, Concussion Blow, Shockwave, Enraged Regeneration
+        spells = {871, 1719, 12292, 46924, 676, 23920, 5246, 12809, 46968, 55694},
+    },
+    {
+        guid = "ECD-TEST-DEATHKNIGHT",
+        name = "TestDK",
+        class = "DEATHKNIGHT",
+        -- Lichborne, Strangulate, Anti-Magic Shell, Death Grip, Mind Freeze,
+        -- Icebound Fortitude, Anti-Magic Zone, Hungering Cold, Dancing Rune Weapon, Summon Gargoyle
+        spells = {49039, 47476, 48707, 49576, 47528, 48792, 51052, 49203, 49028, 49206},
+    },
+}
+
+function engine:IsTestModeActive()
+    return testModeActive
+end
+
+function engine:StartTestMode()
+    if testModeActive then return end
+    testModeActive = true
+
+    local now = GetTime()
+    for _, unit in ipairs(TEST_UNITS) do
+        local color = CLASS2HEXCOLOR[unit.class] or CLASS2HEXCOLOR["none"]
+        GUID2name[unit.guid] = color .. unit.name
+        lastSeenGUID[unit.guid] = now
+
+        local key = self:GetTrackerKey(unit.guid)
+        for i = 1, #unit.spells do
+            local spellID = unit.spells[i]
+            local duration = SPELLS[spellID] or 60
+            -- castTime staggered so "cast order" sorting shows them in list order
+            self:AddCooldown(key, spellID, now + duration, now - i)
+        end
+        self:UpdateTracker(key, unit.guid)
+    end
+end
+
+function engine:StopTestMode()
+    if not testModeActive then return end
+    testModeActive = false
+
+    for _, unit in ipairs(TEST_UNITS) do
+        local key = self:GetTrackerKey(unit.guid)
+        if cooldownInfo[key] then
+            cooldownInfo[key] = table.del(cooldownInfo[key])
+        end
+        GUID2name[unit.guid] = nil
+        lastSeenGUID[unit.guid] = nil
+        self:ReleaseTracker(key)
+    end
+end
+
+function engine:ToggleTestMode()
+    if testModeActive then
+        self:StopTestMode()
+        return false
+    else
+        self:StartTestMode()
+        return true
+    end
+end
+
+------------------------------------------------------------------------
 -- Combat log event handler
 ------------------------------------------------------------------------
 function engine:COMBAT_LOG_EVENT_UNFILTERED(_, subEvent, ...)
@@ -319,6 +406,14 @@ function engine:COMBAT_LOG_EVENT_UNFILTERED(_, subEvent, ...)
         local reaction = bit.band(srcFlags, COMBATLOG_OBJECT_REACTION_MASK)
         if reaction ~= COMBATLOG_OBJECT_REACTION_HOSTILE
         and reaction ~= COMBATLOG_OBJECT_REACTION_NEUTRAL then
+            return
+        end
+
+        -- Skip party/raid members (catches Mind Control: reaction flips but affiliation stays)
+        local affiliation = bit.band(srcFlags, COMBATLOG_OBJECT_AFFILIATION_MASK)
+        if affiliation == COMBATLOG_OBJECT_AFFILIATION_MINE
+        or affiliation == COMBATLOG_OBJECT_AFFILIATION_PARTY
+        or affiliation == COMBATLOG_OBJECT_AFFILIATION_RAID then
             return
         end
 
@@ -364,6 +459,9 @@ function engine:PLAYER_TARGET_CHANGED()
     -- BUG FIX: simplified — just set the new target directly
     targetGUID = UnitGUID("target")
 
+    -- Fixed groups: never reorder trackers on target change
+    if EnemyCooldownsDB and EnemyCooldownsDB.fixedGroups then return end
+
     if targetGUID and trackers[targetGUID] then
         table.removeByValue(trackersOrder, targetGUID)
         table.insert(trackersOrder, 1, targetGUID)
@@ -375,6 +473,7 @@ end
 -- Zone change: wipe state and re-evaluate whether the addon should run
 ------------------------------------------------------------------------
 function engine:PLAYER_ENTERING_WORLD()
+    testModeActive = false
     self:ReleaseAllTrackers()
     self:ResetCooldownInfo()
     self:CheckZoneAndToggle()
