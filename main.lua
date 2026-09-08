@@ -92,6 +92,32 @@ end
 ------------------------------------------------------------------------
 -- Zone detection and addon toggle
 ------------------------------------------------------------------------
+-- EL DUELO NO ES UNA ZONA, ES UN ESTADO.
+--
+-- Los duelos pasan en el mundo, asi que con "Mundo" apagado no se seguian.
+-- Prender "Mundo" para duelar significa tenerlo prendido tambien mientras
+-- haces quests, que es justo el ruido que uno quiere evitar. Por eso el
+-- duelo va aparte: se cuenta como zona propia mientras dura, y al terminar
+-- se vuelve a mandar por la regla de "Mundo".
+--
+-- COMO SE DETECTA. DUEL_FINISHED avisa el final a los dos participantes y
+-- es confiable. El arranque no: DUEL_REQUESTED solo le llega a QUIEN
+-- RECIBE el desafio, el que lo manda no recibe nada. Por eso hay dos vias:
+-- el evento para el retado, y como respaldo entrar en combate contra un
+-- JUGADOR estando en el mundo, que cubre al que desafia.
+local duelActive = false
+
+function engine:IsDuelActive()
+    return duelActive
+end
+
+function engine:SetDuelActive(state)
+    state = state and true or false
+    if duelActive == state then return end
+    duelActive = state
+    self:CheckZoneAndToggle()
+end
+
 function engine:GetCurrentZoneType()
     local inInstance, instanceType = IsInInstance()
     if inInstance then
@@ -101,6 +127,7 @@ function engine:GetCurrentZoneType()
             return "battleground"
         end
     end
+    if duelActive then return "duel" end
     return "world"
 end
 
@@ -361,9 +388,15 @@ function engine:StartTestMode()
         local key = self:GetTrackerKey(unit.guid)
         for i = 1, #unit.spells do
             local spellID = unit.spells[i]
-            local duration = SPELLS[spellID] or 60
-            -- castTime staggered so "cast order" sorting shows them in list order
-            self:AddCooldown(key, spellID, now + duration, now - i)
+            -- El test tambien respeta el filtro: si no, mostraria iconos que
+            -- en combate no van a aparecer nunca.
+            local off = EnemyCooldownsDB and EnemyCooldownsDB.disabledSpells
+                and EnemyCooldownsDB.disabledSpells[spellID]
+            if not off then
+                local duration = SPELLS[spellID] or 60
+                -- castTime staggered so "cast order" sorting shows them in list order
+                self:AddCooldown(key, spellID, now + duration, now - i)
+            end
         end
         self:UpdateTracker(key, unit.guid)
     end
@@ -438,8 +471,13 @@ function engine:COMBAT_LOG_EVENT_UNFILTERED(_, subEvent, ...)
         end
 
         -- Check if this spell itself has a tracked cooldown
+        --
+        -- FILTRO DEL USUARIO. Se comprueba aca y no al dibujar: si el
+        -- hechizo esta apagado ni siquiera se anota el cooldown, asi que no
+        -- ocupa lugar ni hay que acordarse de saltearlo despues.
         local duration = SPELLS[spellID]
-        if duration then
+        if duration and not (EnemyCooldownsDB and EnemyCooldownsDB.disabledSpells
+            and EnemyCooldownsDB.disabledSpells[spellID]) then
             self:AddCooldown(key, spellID, now + duration, now)
             updated = true
         end
@@ -504,10 +542,45 @@ function engine:ADDON_LOADED(addonName)
 end
 
 ------------------------------------------------------------------------
+-- Duelos
+--
+-- DUEL_FINISHED es fiable y le llega a los dos. El arranque no:
+-- DUEL_REQUESTED solo lo recibe QUIEN ES DESAFIADO. Por eso el respaldo de
+-- entrar en combate contra un jugador en el mundo, que es lo que cubre al
+-- que manda el desafio.
+------------------------------------------------------------------------
+function engine:DUEL_REQUESTED()
+    self:SetDuelActive(true)
+end
+
+function engine:DUEL_FINISHED()
+    self:SetDuelActive(false)
+end
+
+function engine:PLAYER_REGEN_DISABLED()
+    if self:IsDuelActive() then return end
+    if IsInInstance() then return end
+    -- Solo contra JUGADORES: pegarle a un bicho no es un duelo.
+    if UnitExists("target") and UnitIsPlayer("target") and UnitCanAttack("player", "target") then
+        self:SetDuelActive(true)
+    end
+end
+
+function engine:PLAYER_REGEN_ENABLED()
+    -- Red de seguridad. Lo normal es que DUEL_FINISHED lo apague antes; esto
+    -- esta para que no quede prendido para siempre si ese evento no llega.
+    self:SetDuelActive(false)
+end
+
+------------------------------------------------------------------------
 -- Event dispatcher
 ------------------------------------------------------------------------
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("ADDON_LOADED")
+eventFrame:RegisterEvent("DUEL_REQUESTED")
+eventFrame:RegisterEvent("DUEL_FINISHED")
+eventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
+eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 eventFrame:SetScript("OnEvent", function(_, event, ...)
     engine[event](engine, ...)
 end)

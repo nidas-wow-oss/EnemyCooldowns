@@ -44,7 +44,8 @@ local defaults = {
     columnSpacing = 25,
     scale = 1.0,
     iconSpacing = 6,
-    enabledZones = { arena = true, battleground = false, world = false },
+    -- duel es un estado, no una zona: ver GetCurrentZoneType en main.lua.
+    enabledZones = { arena = true, battleground = false, world = false, duel = true },
     timerSettings = {
         font = "Fonts\\FRIZQT__.TTF", fontSize = 14, fontOutline = "",
         useColorByTime = true,
@@ -56,6 +57,13 @@ local defaults = {
         font = "Fonts\\FRIZQT__.TTF", fontSize = 12, fontOutline = "OUTLINE",
     },
     showCooldownSwipe = true,
+
+    -- HECHIZOS APAGADOS, por ID.
+    --
+    -- Se guardan los APAGADOS y no los prendidos a proposito: la tabla queda
+    -- casi siempre vacia, y un hechizo nuevo que se sume a spells.lua
+    -- aparece prendido sin que haya que tocar nada.
+    disabledSpells = {},
 }
 
 ------------------------------------------------------------------------
@@ -95,9 +103,7 @@ local function UpdateAllWidgets()
     if not configFrame then return end
     local db = EnemyCooldownsDB
 
-    if W.lockBtn then
-        W.lockBtn:SetText(db.locked and (L["UNLOCK_FRAME"] or "Unlock Frame") or (L["LOCK_FRAME"] or "Lock Frame"))
-    end
+    if W.RefreshEditBtn then W.RefreshEditBtn() end
 
     -- Checkboxes
     if W.namesCheck then W.namesCheck:SetChecked(db.showEnemyNames ~= false) end
@@ -107,6 +113,7 @@ local function UpdateAllWidgets()
     if W.arenaCheck then W.arenaCheck:SetChecked(db.enabledZones.arena) end
     if W.bgCheck    then W.bgCheck:SetChecked(db.enabledZones.battleground) end
     if W.worldCheck then W.worldCheck:SetChecked(db.enabledZones.world) end
+    if W.duelCheck  then W.duelCheck:SetChecked(db.enabledZones.duel ~= false) end
 
     -- Sliders
     if W.iconsCol  then W.iconsCol:SetValue(db.iconsPerColumn) end
@@ -247,10 +254,7 @@ function engine:ToggleLock()
         handle:EnableMouse(true); anchorFrame.bg:Show(); anchorFrame.text:Show()
         if self.StartTestMode then self:StartTestMode() end
     end
-    if W.lockBtn then
-        W.lockBtn:SetText(EnemyCooldownsDB.locked and (L["UNLOCK_FRAME"] or "Unlock Frame") or (L["LOCK_FRAME"] or "Lock Frame"))
-    end
-    if W.RefreshTestBtn then W.RefreshTestBtn() end
+    if W.RefreshEditBtn then W.RefreshEditBtn() end
 end
 
 ------------------------------------------------------------------------
@@ -520,13 +524,35 @@ function engine:CreateConfigMenu()
     -- ==================== FRAME POSITION ====================
     y = CreateSection(sc, L["SECTION_POSITION"] or "Frame Position", y)
 
-    W.lockBtn = CreateThemeButton(sc, 125, 24,
-        EnemyCooldownsDB.locked and (L["UNLOCK_FRAME"] or "Unlock Frame") or (L["LOCK_FRAME"] or "Lock Frame"))
-    W.lockBtn:SetPoint("TOPLEFT", LEFT, y)
-    W.lockBtn:SetScript("OnClick", function() engine:ToggleLock() end)
+    -- UN SOLO BOTON PARA UN SOLO MODO.
+    --
+    -- Habia dos, "Lock Frame" y "Test Mode", y los dos llamaban a
+    -- engine:ToggleLock(): eran literalmente la misma accion con dos
+    -- nombres. Desbloquear el marco ya prende los iconos de prueba y
+    -- bloquearlo los apaga, asi que es un modo solo, el de edicion.
+    local function RefreshEditBtn()
+        if not W.editBtn then return end
+        local base = L["EDIT_MODE_BTN"] or "Edit Mode"
+        if engine:IsTestModeActive() then
+            W.editBtn:SetText(base .. ": |cff00ff99ON|r")
+            W.editBtn:SetBackdropBorderColor(0.0, 0.85, 0.55, 1.0)
+        else
+            W.editBtn:SetText(base .. ": |cffaaaaaaOFF|r")
+            W.editBtn:SetBackdropBorderColor(0.28, 0.52, 0.92, 0.9)
+        end
+    end
+    -- Se expone con los dos nombres: RefreshTestBtn es como lo llama
+    -- ToggleLock desde el engine, y renombrarlo alla no vale la pena.
+    W.RefreshEditBtn = RefreshEditBtn
+    W.RefreshTestBtn = RefreshEditBtn
+
+    W.editBtn = CreateThemeButton(sc, 140, 24, "")
+    W.editBtn:SetPoint("TOPLEFT", LEFT, y)
+    W.editBtn:SetScript("OnClick", function() engine:ToggleLock() end)
+    RefreshEditBtn()
 
     local resetBtn = CreateThemeButton(sc, 125, 24, L["RESET_POSITION"] or "Reset Position")
-    resetBtn:SetPoint("LEFT", W.lockBtn, "RIGHT", 6, 0)
+    resetBtn:SetPoint("LEFT", W.editBtn, "RIGHT", 6, 0)
     resetBtn:SetScript("OnClick", function()
         EnemyCooldownsDB.position = DeepCopy(defaults.position)
         anchorFrame:ClearAllPoints()
@@ -543,27 +569,11 @@ function engine:CreateConfigMenu()
 
     y = y - 30
 
-    local function RefreshTestBtn()
-        local base = L["TEST_MODE_BTN"] or "Test Mode"
-        if engine:IsTestModeActive() then
-            W.testBtn:SetText(base .. ": |cff00ff99ON|r")
-            W.testBtn:SetBackdropBorderColor(0.0, 0.85, 0.55, 1.0)
-        else
-            W.testBtn:SetText(base .. ": |cffaaaaaaOFF|r")
-            W.testBtn:SetBackdropBorderColor(0.28, 0.52, 0.92, 0.9)
-        end
-    end
-    -- Se expone para que ToggleLock pueda refrescar este boton: el modo
-    -- mover y el modo test son ahora el mismo estado.
-    W.RefreshTestBtn = RefreshTestBtn
-
-    W.testBtn = CreateThemeButton(sc, 256, 24, "")
-    W.testBtn:SetPoint("TOPLEFT", LEFT, y)
-    W.testBtn:SetScript("OnClick", function()
-        -- El test tambien desbloquea/bloquea, para que sean un solo modo.
-        engine:ToggleLock()
-    end)
-    RefreshTestBtn()
+    -- Boton a la lista de hechizos. Va en Position porque es lo primero que
+    -- se toca despues de acomodar el marco.
+    local spellsBtn = CreateThemeButton(sc, 256, 24, L["SPELL_LIST_BTN"] or "Spell list...")
+    spellsBtn:SetPoint("TOPLEFT", LEFT, y)
+    spellsBtn:SetScript("OnClick", function() engine:ToggleSpellList() end)
 
     y = y - 30
 
@@ -687,6 +697,13 @@ function engine:CreateConfigMenu()
         EnemyCooldownsDB.enabledZones.world,
         function(v) EnemyCooldownsDB.enabledZones.world = v; engine:CheckZoneAndToggle() end)
 
+    y = y - 26
+
+    -- Va en su propia fila: en la de arriba no entra sin apretujar las tres.
+    W.duelCheck = CreateCheck(sc, LEFT, y, L["ZONE_DUEL"] or "Duel",
+        EnemyCooldownsDB.enabledZones.duel ~= false,
+        function(v) EnemyCooldownsDB.enabledZones.duel = v; engine:CheckZoneAndToggle() end)
+
     y = y - 30
     sc:SetHeight(math.abs(y) + 20)
     configFrame:Hide()
@@ -729,5 +746,281 @@ SlashCmdList["ENEMYCOOLDOWNS"] = function(msg)
         print(L["CMD_UNLOCK"]); print(L["CMD_RESET"])
         print(L["CMD_RESETALL"] or "  /ecd resetall - Reset all settings to defaults")
         print(L["CMD_TEST"] or "  /ecd test - Toggle test mode (10 fake cooldowns)")
+    end
+end
+------------------------------------------------------------------------
+-- LISTA DE HECHIZOS
+--
+-- Ventana aparte con los 245 hechizos que sigue el addon, agrupados por
+-- clase, cada uno con su casilla. Destildar uno hace que el addon deje de
+-- anotarle el cooldown (ver el filtro en main.lua).
+--
+-- SE GUARDAN LOS APAGADOS, no los prendidos: la tabla queda casi siempre
+-- vacia y un hechizo nuevo en spells.lua aparece prendido solo.
+--
+-- LAS FILAS SE CREAN UNA VEZ Y SE RECICLAN. Son 245: crear y destruir
+-- marcos cada vez que se abre la ventana es tirar trabajo, y en 3.3.5a los
+-- marcos no se destruyen de verdad igual. Se crean a demanda y despues
+-- solo se les cambia el contenido.
+------------------------------------------------------------------------
+local spellListFrame
+
+local function BuildSpellList()
+    if spellListFrame then return spellListFrame end
+
+    local f = CreateFrame("Frame", "ECDSpellListFrame", UIParent)
+    f:SetSize(340, 460)
+    f:SetPoint("CENTER", 260, 0)
+    f:SetFrameStrata("DIALOG")
+    f:SetMovable(true); f:EnableMouse(true); f:RegisterForDrag("LeftButton")
+    f:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    f:SetScript("OnDragStop",  function(self) self:StopMovingOrSizing() end)
+    f:SetBackdrop({
+        bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true, tileSize = 16, edgeSize = 16,
+        insets = { left = 4, right = 4, top = 4, bottom = 4 },
+    })
+    f:SetBackdropColor(0.04, 0.08, 0.18, 0.94)
+    f:SetBackdropBorderColor(0.28, 0.52, 0.92, 0.9)
+    f:Hide()
+
+    local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    title:SetPoint("TOP", 0, -12)
+    title:SetText(L["SPELL_LIST_TITLE"] or "Tracked spells")
+
+    local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+    close:SetPoint("TOPRIGHT", -4, -4)
+
+    local note = f:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    note:SetPoint("TOPLEFT", 14, -34)
+    note:SetWidth(310); note:SetJustifyH("LEFT")
+    note:SetText("|cff888888" .. (L["SPELL_LIST_NOTE"]
+        or "Unchecked spells are ignored: no icon and no cooldown tracked.") .. "|r")
+
+    local allOn = CreateThemeButton(f, 100, 20, L["SPELL_ALL_ON"] or "All on")
+    allOn:SetPoint("TOPLEFT", 14, -62)
+    local allOff = CreateThemeButton(f, 100, 20, L["SPELL_ALL_OFF"] or "All off")
+    allOff:SetPoint("LEFT", allOn, "RIGHT", 6, 0)
+
+    local sf = CreateFrame("ScrollFrame", "ECDSpellListScroll", f, "UIPanelScrollFrameTemplate")
+    sf:SetPoint("TOPLEFT", 12, -90)
+    sf:SetPoint("BOTTOMRIGHT", -30, 12)
+    local sc = CreateFrame("Frame"); sc:SetSize(290, 10); sf:SetScrollChild(sc)
+
+    local rows = {}
+    f.rows = rows
+
+    -- UNA FILA POR HECHIZO, NO POR ID.
+    --
+    -- En 3.3.5 cada RANGO de un hechizo tiene su propio ID, y SPELLS los
+    -- lista todos para cachar cualquiera que tire el enemigo: Frost Nova
+    -- tiene 6, Blast Wave 8. GetSpellInfo devuelve el mismo nombre para
+    -- todos, asi que la lista mostraba "Frost Nova" seis veces seguidas.
+    --
+    -- Se agrupan por nombre y la casilla mueve TODOS los rangos de una, que
+    -- es lo que uno quiere: nadie quiere seguir el rango 3 de Frost Nova y
+    -- no el 5.
+    --
+    -- La clave es GRUPO + NOMBRE, no el nombre solo: "Pummel", "Charge" e
+    -- "Intervene" existen en dos secciones distintas (mascota de cazador y
+    -- guerrero) y son cooldowns diferentes.
+    --
+    -- Los IDs que GetSpellInfo no conoce son hechizos que no existen en
+    -- este cliente. Van al final, cada uno por su lado, para que se vean.
+    local ordered = {}
+    do
+        local UNKNOWN = L["SPELL_GROUP_UNKNOWN"] or "NOT IN THIS CLIENT"
+
+        local byGroup, seen = {}, {}
+        for id in pairs(engine.SPELLS) do
+            local name, _, icon = GetSpellInfo(id)
+            local g = (engine.SPELL_GROUPS and engine.SPELL_GROUPS[id]) or "OTROS"
+            if not name then g = UNKNOWN end
+
+            byGroup[g] = byGroup[g] or { list = {}, byName = {} }
+            local bucket = byGroup[g]
+
+            -- Sin nombre no se puede agrupar: cada uno va solo.
+            local key = name or ("#" .. id)
+            local e = (name and bucket.byName[key]) or nil
+            if e then
+                e.ids[#e.ids + 1] = id
+            else
+                e = { name = name or ("spell " .. id), icon = icon, ids = { id } }
+                bucket.byName[key] = e
+                bucket.list[#bucket.list + 1] = e
+            end
+        end
+
+        local order = {}
+        for _, g in ipairs(engine.SPELL_GROUP_ORDER or {}) do order[#order + 1] = g end
+        if byGroup["OTROS"] then order[#order + 1] = "OTROS" end
+        if byGroup[UNKNOWN] then order[#order + 1] = UNKNOWN end
+
+        for _, g in ipairs(order) do
+            local bucket = byGroup[g]
+            if bucket then
+                -- Orden alfabetico estable. Sin ordenar, pairs() devolveria
+                -- los hechizos distinto en cada sesion y la lista saltaria.
+                table.sort(bucket.list, function(x, z)
+                    if x.name == z.name then return x.ids[1] < z.ids[1] end
+                    return x.name < z.name
+                end)
+                ordered[#ordered + 1] = { header = g }
+                for _, e in ipairs(bucket.list) do ordered[#ordered + 1] = e end
+            end
+        end
+    end
+
+    -- Si el modo edicion esta prendido, se rehacen los iconos de prueba para
+    -- que el cambio se vea en el momento. Fuera de ese modo no hay nada que
+    -- refrescar: el filtro pega en el proximo hechizo que salte.
+    local function ApplyFilterNow()
+        if engine:IsTestModeActive() then
+            engine:StopTestMode()
+            engine:StartTestMode()
+        end
+    end
+
+    local function Disabled()
+        EnemyCooldownsDB.disabledSpells = EnemyCooldownsDB.disabledSpells or {}
+        return EnemyCooldownsDB.disabledSpells
+    end
+
+    -- Una fila cuenta como prendida mientras quede AL MENOS un rango
+    -- prendido. Solo se ve destildada cuando estan todos apagados.
+    local function RefreshChecks()
+        local off = Disabled()
+        for _, r in ipairs(rows) do
+            local any = false
+            for _, id in ipairs(r.ids or {}) do
+                if not off[id] then any = true; break end
+            end
+            r:SetChecked(any)
+        end
+    end
+    f.RefreshChecks = RefreshChecks
+
+    -- MEDIDAS DE LA LISTA, EN UN SOLO LUGAR.
+    --
+    -- ROW_BOX es el lado de la casilla y ROW_STEP lo que baja el cursor por
+    -- fila. El paso tiene que ser MAYOR que la casilla: el template mide 26
+    -- de lado, asi que con paso 22 cada casilla se metia 4 px en la fila de
+    -- abajo.
+    local ROW_BOX, ROW_STEP, HDR_STEP = 22, 24, 20
+
+    local yy = -2
+    for i, item in ipairs(ordered) do
+        if item.header then
+            local h = sc:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+            h:SetPoint("TOPLEFT", 4, yy)
+            h:SetText("|cff4fc3f7" .. item.header .. "|r")
+            yy = yy - HDR_STEP
+        else
+            local row = CreateFrame("CheckButton", "ECDSpellRow" .. i, sc,
+                "InterfaceOptionsCheckButtonTemplate")
+            row:SetPoint("TOPLEFT", 10, yy)
+
+            -- NADA DE SetScale ACA.
+            --
+            -- Los offsets de SetPoint se miden en la escala DEL PROPIO
+            -- FRAME, no en la del padre. Con escala 0.85 la casilla
+            -- aterrizaba en 0.85 * yy, mientras el encabezado, el icono y
+            -- el nombre -- hijos de sc, sin escala -- aterrizaban en yy.
+            -- La separacion crecia un 15% por cada fila que bajabas:
+            -- invisible arriba, media docena de filas en el medio (por eso
+            -- las casillas tapaban los nombres de clase) y 601 px al final
+            -- de la lista, donde los ultimos hechizos quedaban sin ninguna
+            -- casilla debajo.
+            --
+            -- Se achica por MEDIDA y no por escala. Las texturas del
+            -- template (UI-CheckBox-Up, -Down, -Highlight, -Check) no
+            -- tienen anclas propias: llenan el boton, asi que se achican
+            -- con el. La escala queda en 1 y yy vuelve a significar lo
+            -- mismo para todos.
+            row:SetWidth(ROW_BOX)
+            row:SetHeight(ROW_BOX)
+            row.ids = item.ids
+
+            local tex = sc:CreateTexture(nil, "ARTWORK")
+            tex:SetSize(16, 16)
+            -- -3 y no -4: centra el icono contra la casilla, que mide
+            -- ROW_BOX y arranca en yy.
+            tex:SetPoint("TOPLEFT", 40, yy - 3)
+            if item.icon then tex:SetTexture(item.icon) end
+            tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+
+            local label = item.name
+            if #item.ids > 1 then
+                label = label .. " |cff666666(" .. #item.ids .. ")|r"
+            end
+
+            local lbl = sc:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+            lbl:SetPoint("LEFT", tex, "RIGHT", 5, 0)
+            lbl:SetText(label)
+
+            -- El texto de la plantilla queda vacio: la etiqueta va afuera,
+            -- al lado del icono, si no el icono se le monta encima.
+            local t = _G[row:GetName() .. "Text"]
+            if t then t:SetText("") end
+
+            if #item.ids > 1 then
+                row:SetScript("OnEnter", function(self)
+                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                    GameTooltip:SetText(item.name, 1, 1, 1)
+                    GameTooltip:AddLine((L["SPELL_RANKS_TIP"]
+                        or "%d ranks, all together."):format(#item.ids), nil, nil, nil, true)
+                    GameTooltip:Show()
+                end)
+                row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            end
+
+            row:SetScript("OnClick", function(self)
+                local on = (self:GetChecked() == 1 or self:GetChecked() == true)
+                local off = Disabled()
+                for _, id in ipairs(self.ids) do
+                    off[id] = (not on) or nil
+                end
+                ApplyFilterNow()
+            end)
+
+            rows[#rows + 1] = row
+            yy = yy - ROW_STEP
+        end
+    end
+
+    sc:SetHeight(math.abs(yy) + 10)
+
+    allOn:SetScript("OnClick", function()
+        EnemyCooldownsDB.disabledSpells = {}
+        RefreshChecks()
+        ApplyFilterNow()
+    end)
+    allOff:SetScript("OnClick", function()
+        local off = {}
+        for _, r in ipairs(rows) do
+            for _, id in ipairs(r.ids or {}) do off[id] = true end
+        end
+        EnemyCooldownsDB.disabledSpells = off
+        RefreshChecks()
+        ApplyFilterNow()
+    end)
+
+    -- Que Escape la cierre, como la ventana de opciones.
+    table.insert(UISpecialFrames, "ECDSpellListFrame")
+
+    RefreshChecks()
+    spellListFrame = f
+    return f
+end
+
+function engine:ToggleSpellList()
+    local f = BuildSpellList()
+    if f:IsShown() then
+        f:Hide()
+    else
+        if f.RefreshChecks then f.RefreshChecks() end
+        f:Show()
     end
 end

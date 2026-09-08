@@ -77,3 +77,14 @@ L["SORT_REMAIN_DESC"]   = "Restante (mayor a menor)"
 
 -- Misc
 L["UNKNOWN"]            = "Desconocido"
+
+-- Modo edicion y lista de hechizos
+L["EDIT_MODE_BTN"]      = "Modo edicion"
+L["SPELL_LIST_BTN"]     = "Lista de hechizos..."
+L["SPELL_LIST_TITLE"]   = "Hechizos seguidos"
+L["SPELL_LIST_NOTE"]    = "Los destildados se ignoran: ni icono ni cooldown."
+L["SPELL_ALL_ON"]       = "Todos"
+L["SPELL_ALL_OFF"]      = "Ninguno"
+L["ZONE_DUEL"]          = "Duelo"
+L["SPELL_GROUP_UNKNOWN"] = "NO EXISTEN EN ESTE CLIENTE"
+L["SPELL_RANKS_TIP"]    = "%d rangos, todos juntos."

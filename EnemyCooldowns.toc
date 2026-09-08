@@ -1,7 +1,7 @@
 ## Interface: 30300
 ## Title: |cffffffffE|r|cffffffffn|r|cffffffffe|r|cffffffffm|r|cffffffffy|r|cff00ff00 |r|cff00ff00C|r|cff00ff00o|r|cff00ff00o|r|cff00ff00l|r|cff00ff00d|r|cff00ff00o|r|cff00ff00w|r|cff00ff00n|r|cff00ff00s|r
 ## Author: Nidhaus
-## Version: 2.0
+## Version: 2.1
 ## Notes: Tracks enemy cooldown usage in PvP.
 ## SavedVariables: EnemyCooldownsDB
 

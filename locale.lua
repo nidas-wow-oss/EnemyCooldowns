@@ -81,3 +81,14 @@ L["ANCHOR_LABEL"]       = "Enemy Cooldowns"
 
 -- Misc
 L["UNKNOWN"]            = "Unknown"
+
+-- Modo edicion y lista de hechizos
+L["EDIT_MODE_BTN"]      = "Edit Mode"
+L["SPELL_LIST_BTN"]     = "Spell list..."
+L["SPELL_LIST_TITLE"]   = "Tracked spells"
+L["SPELL_LIST_NOTE"]    = "Unchecked spells are ignored: no icon and no cooldown tracked."
+L["SPELL_ALL_ON"]       = "All on"
+L["SPELL_ALL_OFF"]      = "All off"
+L["ZONE_DUEL"]          = "Duel"
+L["SPELL_GROUP_UNKNOWN"] = "NOT IN THIS CLIENT"
+L["SPELL_RANKS_TIP"]    = "%d ranks, all together."

@@ -2,17 +2,14 @@ local namespace = select(2,...)
 
 namespace.SPELLS = {
     -- Racial and Items
-    [69070] = 120, -- Rocket Jump (Goblin)
     [26297] = 180, -- Berserking (Troll)
     [20594] = 120, -- Stoneform (Dwarf)
     [58984] = 120, -- Shadowmeld (Night Elf)
     [20589] = 90, -- Escape Artist (Gnome)
     [59752] = 120, -- Every Man for Himself (Human)
     [7744] = 120, -- Will of the Forsaken (Undead)
-    [68992] = 120, -- Darkflight (Worgen)
     [50613] = 120, -- Arcane Torrent (Blood Elf)
     [11876] = 120, -- War Stomp (Tauren)
-    [69041] = 120, -- Rocket Barrage (Goblin)
     [42292] = 120, -- PvP Trinket
     [71607] = 120, -- Bauble of True Blood
 
@@ -67,19 +64,13 @@ namespace.SPELLS = {
     [50433] = 10, -- Ankle Crack
     [26090] = 30, -- Pummel
     [53543] = 60, -- Clench
-    [91644] = 60, -- Snatch
     [53562] = 40, -- Ravage
     [54706] = 40, -- Venom Web Spray
     [4167] = 40, -- Web
     [50274] = 12, -- Spore Cloud
-    [90355] = 360, -- Ancient Hysteria
-    [90314] = 25, -- Tailspin
     [50271] = 10, -- Tendon Rip
     [50318] = 60, -- Serenity Dust
-    [90361] = 40, -- Spirit Mend
     [50285] = 40, -- Dust Cloud
-    [90327] = 40, -- Lock Jaw
-    [90337] = 60, -- Bad Manner
     [55709] = 480, -- Heart of the Phoenix
     [53426] = 180, -- Lick Your Wounds
     [53476] = 30, -- Intervene
@@ -210,7 +201,6 @@ namespace.SPELLS = {
     [51533] = 180, -- Feral Spirit
 
     -- WARLOCK
-    [74434] = 45, -- Soulburn
     [47847] = 20, -- Shadowfury
     [47860] = 120, -- Death Coil
     [47859] = 120, -- Death Coil
@@ -224,16 +214,12 @@ namespace.SPELLS = {
     [54785] = 45, -- Demon Leap
     [48020] = 30, -- Demonic Circle: Teleport
     [17877] = 15, -- Shadowburn
-    [71521] = 12, -- Hand of Gul'dan
-    [91711] = 30, -- Nether Ward
     [59672] = 126, -- Metamorphosis
     [30283] = 20, -- Shadowfury
     [30414] = 20, -- Shadowfury
     [19647] = 24, -- Spell Lock (Felhunter)
     [19244] = 24, -- Spell Lock
     [47986] = 60, -- Sacrifice (Voidwalker)
-    [89766] = 30, -- Axe Toss (Felguard)
-    [89751] = 45, -- Felstorm (Felguard)
 
     -- WARRIOR
     [47486] = 5, -- Mortal Strike
@@ -306,4 +292,273 @@ namespace.RESETTERS = {
     -- Shaman: Bloodlust/Heroism
     [2825] = {},
     [32182] = {},
+}
+
+-- ============================================================
+-- SPELL_GROUPS: a que seccion pertenece cada hechizo.
+--
+-- Sale de los encabezados de comentario de SPELLS de aca arriba, que
+-- en Lua no existen en tiempo de ejecucion. Se genero una vez con un
+-- script; si agregas hechizos nuevos a mano, sumalos tambien aca o van
+-- a caer en OTROS en la lista de filtros.
+-- ============================================================
+namespace.SPELL_GROUP_ORDER = {
+    "RACIAL AND ITEMS",
+    "DEATH KNIGHT",
+    "DRUID",
+    "HUNTER",
+    "HUNTER PETS",
+    "MAGE",
+    "PALADIN",
+    "PRIEST",
+    "ROGUE",
+    "SHAMAN",
+    "WARLOCK",
+    "WARRIOR",
+}
+
+namespace.SPELL_GROUPS = {
+    -- RACIAL AND ITEMS
+    [26297] = "RACIAL AND ITEMS",
+    [20594] = "RACIAL AND ITEMS",
+    [58984] = "RACIAL AND ITEMS",
+    [20589] = "RACIAL AND ITEMS",
+    [59752] = "RACIAL AND ITEMS",
+    [7744] = "RACIAL AND ITEMS",
+    [50613] = "RACIAL AND ITEMS",
+    [11876] = "RACIAL AND ITEMS",
+    [42292] = "RACIAL AND ITEMS",
+    [71607] = "RACIAL AND ITEMS",
+    -- DEATH KNIGHT
+    [49039] = "DEATH KNIGHT",
+    [47476] = "DEATH KNIGHT",
+    [48707] = "DEATH KNIGHT",
+    [49576] = "DEATH KNIGHT",
+    [47528] = "DEATH KNIGHT",
+    [49222] = "DEATH KNIGHT",
+    [51052] = "DEATH KNIGHT",
+    [49203] = "DEATH KNIGHT",
+    [48792] = "DEATH KNIGHT",
+    [47481] = "DEATH KNIGHT",
+    [48265] = "DEATH KNIGHT",
+    [49028] = "DEATH KNIGHT",
+    [49206] = "DEATH KNIGHT",
+    [47482] = "DEATH KNIGHT",
+    [48743] = "DEATH KNIGHT",
+    -- DRUID
+    [22812] = "DRUID",
+    [16979] = "DRUID",
+    [49376] = "DRUID",
+    [61384] = "DRUID",
+    [49802] = "DRUID",
+    [53201] = "DRUID",
+    [8983] = "DRUID",
+    [53312] = "DRUID",
+    [50334] = "DRUID",
+    -- HUNTER
+    [65878] = "HUNTER",
+    [3045] = "HUNTER",
+    [61006] = "HUNTER",
+    [53271] = "HUNTER",
+    [19263] = "HUNTER",
+    [19503] = "HUNTER",
+    [34490] = "HUNTER",
+    [1543] = "HUNTER",
+    [19574] = "HUNTER",
+    [781] = "HUNTER",
+    [5384] = "HUNTER",
+    [1513] = "HUNTER",
+    [19577] = "HUNTER",
+    [34600] = "HUNTER",
+    -- HUNTER PETS
+    [61685] = "HUNTER PETS",
+    [50519] = "HUNTER PETS",
+    [50245] = "HUNTER PETS",
+    [50433] = "HUNTER PETS",
+    [26090] = "HUNTER PETS",
+    [53543] = "HUNTER PETS",
+    [53562] = "HUNTER PETS",
+    [54706] = "HUNTER PETS",
+    [4167] = "HUNTER PETS",
+    [50274] = "HUNTER PETS",
+    [50271] = "HUNTER PETS",
+    [50318] = "HUNTER PETS",
+    [50285] = "HUNTER PETS",
+    [55709] = "HUNTER PETS",
+    [53426] = "HUNTER PETS",
+    [53476] = "HUNTER PETS",
+    [53480] = "HUNTER PETS",
+    [53478] = "HUNTER PETS",
+    [53517] = "HUNTER PETS",
+    -- MAGE
+    [2139] = "MAGE",
+    [1953] = "MAGE",
+    [45438] = "MAGE",
+    [43039] = "MAGE",
+    [44572] = "MAGE",
+    [42945] = "MAGE",
+    [42950] = "MAGE",
+    [13018] = "MAGE",
+    [13019] = "MAGE",
+    [13020] = "MAGE",
+    [13021] = "MAGE",
+    [33933] = "MAGE",
+    [42944] = "MAGE",
+    [27133] = "MAGE",
+    [11113] = "MAGE",
+    [31661] = "MAGE",
+    [33042] = "MAGE",
+    [42949] = "MAGE",
+    [33041] = "MAGE",
+    [33043] = "MAGE",
+    [12042] = "MAGE",
+    [12043] = "MAGE",
+    [12051] = "MAGE",
+    [11958] = "MAGE",
+    [122] = "MAGE",
+    [42917] = "MAGE",
+    [10230] = "MAGE",
+    [27088] = "MAGE",
+    [865] = "MAGE",
+    [6131] = "MAGE",
+    [11129] = "MAGE",
+    [12472] = "MAGE",
+    [31687] = "MAGE",
+    [33395] = "MAGE",
+    [55342] = "MAGE",
+    -- PALADIN
+    [1044] = "PALADIN",
+    [10308] = "PALADIN",
+    [20066] = "PALADIN",
+    [642] = "PALADIN",
+    [48825] = "PALADIN",
+    [31884] = "PALADIN",
+    [54428] = "PALADIN",
+    [853] = "PALADIN",
+    [5588] = "PALADIN",
+    [5589] = "PALADIN",
+    [10278] = "PALADIN",
+    [6940] = "PALADIN",
+    [498] = "PALADIN",
+    [1038] = "PALADIN",
+    -- PRIEST
+    [64044] = "PRIEST",
+    [10890] = "PRIEST",
+    [15487] = "PRIEST",
+    [47585] = "PRIEST",
+    [33206] = "PRIEST",
+    [10060] = "PRIEST",
+    [586] = "PRIEST",
+    -- ROGUE
+    [2094] = "ROGUE",
+    [1766] = "ROGUE",
+    [1769] = "ROGUE",
+    [1767] = "ROGUE",
+    [38768] = "ROGUE",
+    [31224] = "ROGUE",
+    [26889] = "ROGUE",
+    [1856] = "ROGUE",
+    [1857] = "ROGUE",
+    [36554] = "ROGUE",
+    [8643] = "ROGUE",
+    [408] = "ROGUE",
+    [51722] = "ROGUE",
+    [51713] = "ROGUE",
+    [11285] = "ROGUE",
+    [11286] = "ROGUE",
+    [1777] = "ROGUE",
+    [8629] = "ROGUE",
+    [38764] = "ROGUE",
+    [14278] = "ROGUE",
+    [14185] = "ROGUE",
+    [26669] = "ROGUE",
+    [5277] = "ROGUE",
+    [13750] = "ROGUE",
+    [2983] = "ROGUE",
+    [11305] = "ROGUE",
+    [8696] = "ROGUE",
+    [14177] = "ROGUE",
+    [13877] = "ROGUE",
+    [45182] = "ROGUE",
+    [14183] = "ROGUE",
+    [51690] = "ROGUE",
+    -- SHAMAN
+    [8177] = "SHAMAN",
+    [57994] = "SHAMAN",
+    [59159] = "SHAMAN",
+    [59156] = "SHAMAN",
+    [59158] = "SHAMAN",
+    [2484] = "SHAMAN",
+    [58582] = "SHAMAN",
+    [51514] = "SHAMAN",
+    [8046] = "SHAMAN",
+    [10413] = "SHAMAN",
+    [8044] = "SHAMAN",
+    [49230] = "SHAMAN",
+    [49231] = "SHAMAN",
+    [10414] = "SHAMAN",
+    [25454] = "SHAMAN",
+    [8045] = "SHAMAN",
+    [8042] = "SHAMAN",
+    [10412] = "SHAMAN",
+    [59490] = "SHAMAN",
+    [2825] = "SHAMAN",
+    [32182] = "SHAMAN",
+    [16188] = "SHAMAN",
+    [16166] = "SHAMAN",
+    [51533] = "SHAMAN",
+    -- WARLOCK
+    [47847] = "WARLOCK",
+    [47860] = "WARLOCK",
+    [47859] = "WARLOCK",
+    [6789] = "WARLOCK",
+    [27223] = "WARLOCK",
+    [17926] = "WARLOCK",
+    [17962] = "WARLOCK",
+    [47891] = "WARLOCK",
+    [5484] = "WARLOCK",
+    [17928] = "WARLOCK",
+    [54785] = "WARLOCK",
+    [48020] = "WARLOCK",
+    [17877] = "WARLOCK",
+    [59672] = "WARLOCK",
+    [30283] = "WARLOCK",
+    [30414] = "WARLOCK",
+    [19647] = "WARLOCK",
+    [19244] = "WARLOCK",
+    [47986] = "WARLOCK",
+    -- WARRIOR
+    [47486] = "WARRIOR",
+    [12292] = "WARRIOR",
+    [11578] = "WARRIOR",
+    [6552] = "WARRIOR",
+    [6554] = "WARRIOR",
+    [23920] = "WARRIOR",
+    [676] = "WARRIOR",
+    [20252] = "WARRIOR",
+    [20616] = "WARRIOR",
+    [20617] = "WARRIOR",
+    [30194] = "WARRIOR",
+    [30198] = "WARRIOR",
+    [47996] = "WARRIOR",
+    [30151] = "WARRIOR",
+    [25272] = "WARRIOR",
+    [25275] = "WARRIOR",
+    [12809] = "WARRIOR",
+    [72] = "WARRIOR",
+    [1671] = "WARRIOR",
+    [29704] = "WARRIOR",
+    [1672] = "WARRIOR",
+    [60970] = "WARRIOR",
+    [46924] = "WARRIOR",
+    [871] = "WARRIOR",
+    [46968] = "WARRIOR",
+    [3411] = "WARRIOR",
+    [30357] = "WARRIOR",
+    [2687] = "WARRIOR",
+    [2565] = "WARRIOR",
+    [1719] = "WARRIOR",
+    [55694] = "WARRIOR",
+    [5246] = "WARRIOR",
+    [20230] = "WARRIOR",
 }
