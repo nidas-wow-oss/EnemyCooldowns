@@ -56,6 +56,8 @@ namespace.SPELLS = {
     [1513] = 30, -- Scare Beast
     [19577] = 20, -- Intimidation
     [34600] = 28, -- Snake Trap
+    [53209] = 10, -- Chimera Shot
+    [49050] = 8, -- Aimed Shot (rango 9; 8s asumiendo el glifo)
 
     -- HUNTER PETS
     [61685] = 25, -- Charge
@@ -370,6 +372,8 @@ namespace.SPELL_GROUPS = {
     [1513] = "HUNTER",
     [19577] = "HUNTER",
     [34600] = "HUNTER",
+    [53209] = "HUNTER",
+    [49050] = "HUNTER",
     -- HUNTER PETS
     [61685] = "HUNTER PETS",
     [50519] = "HUNTER PETS",
