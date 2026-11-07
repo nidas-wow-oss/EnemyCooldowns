@@ -12,6 +12,8 @@ PvP addon that tracks enemy cooldowns in real time. Built on top of the original
 
 <img width="600" height="407" alt="Image" src="https://github.com/user-attachments/assets/2956d5a7-27d3-46d1-af0a-a687d941db3b" />
 <img width="669" height="876" alt="Image" src="https://github.com/user-attachments/assets/e19e5ec2-3953-4a46-a6f2-3327603bc278" />
+<img width="374" height="460" alt="Enemy Cooldowns" src="https://raw.githubusercontent.com/nidas-wow-oss/EnemyCooldowns/readme-images/enemy-cooldowns.png" />
+<img width="494" height="651" alt="Tracked spells" src="https://raw.githubusercontent.com/nidas-wow-oss/EnemyCooldowns/readme-images/tracked-spells.png" />
 
 ---
 
