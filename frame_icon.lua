@@ -10,8 +10,8 @@ local prototype = setmetatable({}, getmetatable(UIParent))
 local MT = {__index = prototype}
 
 local spellID2texture = setmetatable({
-    [71607] = "Interface\\Icons\\inv_jewelcrafting_gem_28", -- bauble of true blood
-    [42292] = "Interface\\Icons\\Spell_Shadow_Charm", -- Medalion
+    [71607] = "Interface\\Icons\\inv_jewelcrafting_gem_28",
+    [42292] = "Interface\\Icons\\Spell_Shadow_Charm",
 },{
     __index = function(t,k)
         local _,_,v = GetSpellInfo(k)
@@ -60,20 +60,18 @@ local function GetTimerColor(remain)
     end
 end
 
--- ✅ MEJORA 3: OPTIMIZACIÓN DE ONUPDATE (throttling)
-local UPDATE_THROTTLE = 0.1  -- Solo actualizar cada 0.1 segundos
+local UPDATE_THROTTLE = 0.1
 local function frame_update_cb(self, elapsed)
-    -- Acumular tiempo
+
     self.throttleTimer = (self.throttleTimer or 0) + elapsed
-    
-    -- Solo actualizar cada UPDATE_THROTTLE segundos (98% menos CPU usage)
+
     if self.throttleTimer < UPDATE_THROTTLE then
         return
     end
-    
+
     local actualElapsed = self.throttleTimer
     self.throttleTimer = 0
-    
+
     local remain = self.remain - actualElapsed
     self.remain = remain
 
@@ -114,7 +112,6 @@ function prototype:SetCooldown(timeEnd, spellID)
     local duration = timeEnd - currentTime
     if duration <= 0 then return end
 
-    -- Forzar actualización de fuente siempre
     if self.UpdateFont then
         self:UpdateFont()
     end
@@ -124,14 +121,13 @@ function prototype:SetCooldown(timeEnd, spellID)
     self.timeEnd = timeEnd
     self.spellID = spellID
     self.remain = duration
-    self.throttleTimer = 0  -- Reset throttle timer
+    self.throttleTimer = 0
 
-    -- ✅ EXTRA 2: Aplicar configuración de cooldown swipe
     local showSwipe = true
     if EnemyCooldownsDB and EnemyCooldownsDB.showCooldownSwipe ~= nil then
         showSwipe = EnemyCooldownsDB.showCooldownSwipe
     end
-    
+
     if showSwipe then
         if not isSameCooldown and self.cooldown then
             self.cooldown:SetCooldown(currentTime, duration)
@@ -155,7 +151,7 @@ function engine:CreateIcon(parent)
     frame:SetFrameLevel(parent:GetFrameLevel())
     frame:Hide()
     frame.timeEnd = nil
-    frame.throttleTimer = 0  -- Throttle timer inicial
+    frame.throttleTimer = 0
 
     local text = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     text:SetJustifyH("LEFT")
@@ -174,7 +170,6 @@ function engine:CreateIcon(parent)
     frame.texture = texture
     frame.cooldown = cooldown
 
-    -- fuente inicial
     frame:UpdateFont()
 
     return frame
@@ -198,13 +193,12 @@ function engine:UpdateAllIconFonts()
     end
 end
 
--- ✅ EXTRA 2: Función para actualizar visibilidad de cooldown swipes
 function engine:UpdateAllCooldownSwipes()
     local showSwipe = true
     if EnemyCooldownsDB and EnemyCooldownsDB.showCooldownSwipe ~= nil then
         showSwipe = EnemyCooldownsDB.showCooldownSwipe
     end
-    
+
     for _, tracker in pairs(self.trackers or {}) do
         if tracker.iconsBySpell then
             for _, icon in pairs(tracker.iconsBySpell) do

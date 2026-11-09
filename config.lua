@@ -5,18 +5,15 @@ local isDragging = false
 local anchorFrame
 local L
 
--- Widget references for in-place reset
 local W = {}
 
--- Theme
-local THEME_BLUE = {r = 0.31, g = 0.76, b = 0.97}  -- 4fc3f7 (headers, unificado)
-local THEME_CYAN = {r = 0.31, g = 0.76, b = 0.97}  -- 4fc3f7 (labels, unificado)
+local THEME_BLUE = {r = 0.31, g = 0.76, b = 0.97}
+local THEME_CYAN = {r = 0.31, g = 0.76, b = 0.97}
 local THEME_LINE = {r = 0.20, g = 0.50, b = 0.80}
 local THEME_BG   = {r = 0.05, g = 0.10, b = 0.18}
 
 local MEDIA = "Interface\\AddOns\\EnemyCooldowns\\Media\\Fonts\\"
 
--- Font list (only 2 custom + 4 default)
 local fontList = {
     {name = "Friz Quadrata",     path = "Fonts\\FRIZQT__.TTF"},
     {name = "Arial",             path = "Fonts\\ARIALN.TTF"},
@@ -32,7 +29,6 @@ local outlineList = {
     {name = "Thick Outline", value = "THICKOUTLINE"},
 }
 
--- Defaults
 local defaults = {
     position = { point = "CENTER", x = 0, y = 200 },
     locked = true,
@@ -44,7 +40,7 @@ local defaults = {
     columnSpacing = 25,
     scale = 1.0,
     iconSpacing = 6,
-    -- duel es un estado, no una zona: ver GetCurrentZoneType en main.lua.
+
     enabledZones = { arena = true, battleground = false, world = false, duel = true },
     timerSettings = {
         font = "Fonts\\FRIZQT__.TTF", fontSize = 14, fontOutline = "",
@@ -58,17 +54,9 @@ local defaults = {
     },
     showCooldownSwipe = true,
 
-    -- HECHIZOS APAGADOS, por ID.
-    --
-    -- Se guardan los APAGADOS y no los prendidos a proposito: la tabla queda
-    -- casi siempre vacia, y un hechizo nuevo que se sume a spells.lua
-    -- aparece prendido sin que haya que tocar nada.
     disabledSpells = {},
 }
 
-------------------------------------------------------------------------
--- Helpers
-------------------------------------------------------------------------
 local function DeepCopy(src)
     if type(src) ~= "table" then return src end
     local dst = {}
@@ -96,16 +84,12 @@ local function OutlineToName(val)
     return "None"
 end
 
-------------------------------------------------------------------------
--- Update all widgets in-place (for Reset All)
-------------------------------------------------------------------------
 local function UpdateAllWidgets()
     if not configFrame then return end
     local db = EnemyCooldownsDB
 
     if W.RefreshEditBtn then W.RefreshEditBtn() end
 
-    -- Checkboxes
     if W.namesCheck then W.namesCheck:SetChecked(db.showEnemyNames ~= false) end
     if W.colorCheck then W.colorCheck:SetChecked(db.timerSettings.useColorByTime) end
     if W.swipeCheck then W.swipeCheck:SetChecked(db.showCooldownSwipe ~= false) end
@@ -115,7 +99,6 @@ local function UpdateAllWidgets()
     if W.worldCheck then W.worldCheck:SetChecked(db.enabledZones.world) end
     if W.duelCheck  then W.duelCheck:SetChecked(db.enabledZones.duel ~= false) end
 
-    -- Sliders
     if W.iconsCol  then W.iconsCol:SetValue(db.iconsPerColumn) end
     if W.ySpace    then W.ySpace:SetValue(db.iconSpacing) end
     if W.xSpace    then W.xSpace:SetValue(db.columnSpacing) end
@@ -124,14 +107,12 @@ local function UpdateAllWidgets()
     if W.pNameSize then W.pNameSize:SetValue(db.playerNameSettings.fontSize) end
     if W.timerSize then W.timerSize:SetValue(db.timerSettings.fontSize) end
 
-    -- Dropdowns: just update displayed text; checkmarks update dynamically on open
     if W.sortDD       then UIDropDownMenu_SetText(W.sortDD, ({cast = L["SORT_CAST"] or "Cast order (recent first)", remain_asc = L["SORT_REMAIN_ASC"] or "Remaining (low to high)", remain_desc = L["SORT_REMAIN_DESC"] or "Remaining (high to low)"})[db.sortMode] or "") end
     if W.pNameFontDD  then UIDropDownMenu_SetText(W.pNameFontDD, FontPathToName(db.playerNameSettings.font)) end
     if W.pNameStyleDD then UIDropDownMenu_SetText(W.pNameStyleDD, OutlineToName(db.playerNameSettings.fontOutline)) end
     if W.timerFontDD  then UIDropDownMenu_SetText(W.timerFontDD, FontPathToName(db.timerSettings.font)) end
     if W.timerStyleDD then UIDropDownMenu_SetText(W.timerStyleDD, OutlineToName(db.timerSettings.fontOutline)) end
 
-    -- Color swatches
     for _, key in ipairs({"colorNormal", "color10s", "color3s"}) do
         if W[key] then
             local c = db.timerSettings[key]
@@ -140,9 +121,6 @@ local function UpdateAllWidgets()
     end
 end
 
-------------------------------------------------------------------------
--- InitConfig
-------------------------------------------------------------------------
 function engine:InitConfig()
     if not EnemyCooldownsDB then EnemyCooldownsDB = {} end
     FillDefaults(EnemyCooldownsDB, defaults)
@@ -155,9 +133,6 @@ function engine:InitConfig()
     self:CreateAnchorFrame()
 end
 
-------------------------------------------------------------------------
--- Reset All (no reload)
-------------------------------------------------------------------------
 function engine:ResetAllDefaults()
     EnemyCooldownsDB = DeepCopy(defaults)
 
@@ -186,9 +161,6 @@ function engine:ResetAllDefaults()
     print("|cff4fc3f7[Enemy Cooldowns]|r " .. (L["ALL_RESET"] or "All settings reset to defaults"))
 end
 
-------------------------------------------------------------------------
--- Anchor frame
-------------------------------------------------------------------------
 function engine:CreateAnchorFrame()
     if anchorFrame then return end
     anchorFrame = CreateFrame("Frame", "EnemyCooldownsAnchor", UIParent)
@@ -198,11 +170,6 @@ function engine:CreateAnchorFrame()
     anchorFrame:SetMovable(true)
     anchorFrame:EnableMouse(false)
 
-    -- ASA DE ARRASTRE, POR ENCIMA del anchor.
-    -- Antes el cuadro negro con el titulo ocupaba el anchor entero y quedaba
-    -- justo sobre los iconos, tapandolos mientras acomodabas. Ahora es un
-    -- frame aparte, apoyado ARRIBA del anchor: se arrastra desde ahi y los
-    -- cooldowns quedan siempre a la vista.
     local handle = CreateFrame("Frame", "EnemyCooldownsDragHandle", anchorFrame)
     handle:SetSize(200, 26)
     handle:SetPoint("BOTTOM", anchorFrame, "TOP", 0, 8)
@@ -218,7 +185,6 @@ function engine:CreateAnchorFrame()
     text:SetPoint("CENTER"); text:SetText(L and L["ANCHOR_LABEL"] or "Enemy Cooldowns"); text:Hide()
     anchorFrame.text = text
 
-    -- El arrastre lo inicia el asa, pero lo que se mueve es el anchor.
     handle:SetScript("OnDragStart", function()
         if not EnemyCooldownsDB.locked then anchorFrame:StartMoving(); isDragging = true end
     end)
@@ -236,14 +202,6 @@ end
 
 function engine:GetAnchorFrame() return anchorFrame end
 
-------------------------------------------------------------------------
--- Lock / Unlock
-------------------------------------------------------------------------
--- MODO MOVER = MODO TEST (un solo estado)
--- Antes eran dos botones separados: uno desbloqueaba y otro mostraba los
--- iconos de prueba, asi que para acomodar el frame habia que acordarse de
--- prender los dos. Ahora desbloquear enciende el test automaticamente (para
--- ver que estas moviendo) y bloquear lo apaga.
 function engine:ToggleLock()
     EnemyCooldownsDB.locked = not EnemyCooldownsDB.locked
     local handle = anchorFrame.dragHandle or anchorFrame
@@ -257,9 +215,6 @@ function engine:ToggleLock()
     if W.RefreshEditBtn then W.RefreshEditBtn() end
 end
 
-------------------------------------------------------------------------
--- Refresh helpers
-------------------------------------------------------------------------
 function engine:RefreshAllTrackers()
     for GUID, tracker in pairs(engine.trackers or {}) do
         local info = self:GetCooldownInfo(GUID)
@@ -285,10 +240,6 @@ function engine:ApplyNameVisibilityToAll()
     end
 end
 
-------------------------------------------------------------------------
--- UI WIDGET BUILDERS
-------------------------------------------------------------------------
-
 local function CreateSeparator(parent, yOff)
     local line = parent:CreateTexture(nil, "ARTWORK")
     line:SetHeight(1)
@@ -312,7 +263,7 @@ local function CreateNUFSlider(parent, name, x, y, width, minV, maxV, step, curV
     tf:SetSize(width, 14); tf:SetPoint("TOPLEFT", x, y)
     local tfs = tf:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     tfs:SetPoint("TOP", tf, "TOP", 0, 0)
-    tfs:SetTextColor(0.31, 0.76, 0.97)  -- 4fc3f7
+    tfs:SetTextColor(0.31, 0.76, 0.97)
     tfs:SetText(title)
 
     local slider = CreateFrame("Slider", name, parent, "OptionsSliderTemplate")
@@ -365,7 +316,6 @@ local function CreateCheck(parent, x, y, labelText, checked, onClick, tooltipTex
     return cb
 end
 
--- Flat themed button (matches panel style; red template reserved for destructive actions)
 local function CreateThemeButton(parent, w, h, text)
     local btn = CreateFrame("Button", nil, parent)
     btn:SetSize(w, h)
@@ -388,7 +338,6 @@ local function CreateThemeButton(parent, w, h, text)
     return btn
 end
 
--- FIX #1 & #4: getSelected is a FUNCTION that reads from DB every time the dropdown opens
 local function CreateDropdown(parent, name, x, y, width, labelText, items, getSelected, onSelect)
     local label = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     label:SetPoint("TOPLEFT", x + 20, y)
@@ -400,7 +349,7 @@ local function CreateDropdown(parent, name, x, y, width, labelText, items, getSe
     UIDropDownMenu_SetWidth(dd, width)
 
     UIDropDownMenu_Initialize(dd, function()
-        local currentValue = getSelected()  -- read LIVE from DB each time dropdown opens
+        local currentValue = getSelected()
         for _, item in ipairs(items) do
             local info = UIDropDownMenu_CreateInfo()
             info.text = item.name
@@ -413,7 +362,6 @@ local function CreateDropdown(parent, name, x, y, width, labelText, items, getSe
         end
     end)
 
-    -- Set initial display text
     local initVal = getSelected()
     for _, item in ipairs(items) do
         if item.value == initVal then UIDropDownMenu_SetText(dd, item.name); break end
@@ -446,9 +394,6 @@ local function CreateColorBtn(parent, labelText, x, y, colorKey)
     return btn
 end
 
-------------------------------------------------------------------------
--- Confirmation popup
-------------------------------------------------------------------------
 StaticPopupDialogs["ECD_CONFIRM_RESET_ALL"] = {
     text = "Reset ALL Enemy Cooldowns settings to defaults?",
     button1 = "Yes", button2 = "Cancel",
@@ -456,9 +401,6 @@ StaticPopupDialogs["ECD_CONFIRM_RESET_ALL"] = {
     timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
 }
 
-------------------------------------------------------------------------
--- CREATE CONFIG MENU
-------------------------------------------------------------------------
 function engine:CreateConfigMenu()
     if configFrame then configFrame:Show(); return end
     L = engine.L or {}
@@ -480,7 +422,6 @@ function engine:CreateConfigMenu()
     configFrame:SetBackdropBorderColor(0.22, 0.52, 0.92, 0.95)
     table.insert(UISpecialFrames, "EnemyCooldownsConfig")
 
-    -- titleBox: narrow, centered, protrudes above the frame top (NUF style)
     local titleBox = CreateFrame("Frame", nil, configFrame)
     titleBox:SetWidth(260)
     titleBox:SetHeight(36)
@@ -497,13 +438,12 @@ function engine:CreateConfigMenu()
 
     configFrame.title = titleBox:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     configFrame.title:SetPoint("CENTER", titleBox, "CENTER", 0, 0)
-    configFrame.title:SetTextColor(1.0, 0.84, 0.0)  -- FFD700
+    configFrame.title:SetTextColor(1.0, 0.84, 0.0)
     configFrame.title:SetText("Enemy Cooldowns")
 
-    -- Subtitle sits below titleBox, outside the box on the main frame
     local sub = configFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     sub:SetPoint("TOP", configFrame, "TOP", 0, -20)
-    sub:SetTextColor(0.67, 0.67, 0.67)  -- aaaaaa
+    sub:SetTextColor(0.67, 0.67, 0.67)
     sub:SetText("Cooldown Tracker & PvP Tools")
 
     local closeBtn = CreateFrame("Button", nil, configFrame, "UIPanelCloseButton")
@@ -521,15 +461,8 @@ function engine:CreateConfigMenu()
     for _, f in ipairs(fontList) do fontItems[#fontItems + 1] = {name = f.name, value = f.path} end
     for _, o in ipairs(outlineList) do outlineItems[#outlineItems + 1] = {name = o.name, value = o.value} end
 
-    -- ==================== FRAME POSITION ====================
     y = CreateSection(sc, L["SECTION_POSITION"] or "Frame Position", y)
 
-    -- UN SOLO BOTON PARA UN SOLO MODO.
-    --
-    -- Habia dos, "Lock Frame" y "Test Mode", y los dos llamaban a
-    -- engine:ToggleLock(): eran literalmente la misma accion con dos
-    -- nombres. Desbloquear el marco ya prende los iconos de prueba y
-    -- bloquearlo los apaga, asi que es un modo solo, el de edicion.
     local function RefreshEditBtn()
         if not W.editBtn then return end
         local base = L["EDIT_MODE_BTN"] or "Edit Mode"
@@ -541,8 +474,7 @@ function engine:CreateConfigMenu()
             W.editBtn:SetBackdropBorderColor(0.28, 0.52, 0.92, 0.9)
         end
     end
-    -- Se expone con los dos nombres: RefreshTestBtn es como lo llama
-    -- ToggleLock desde el engine, y renombrarlo alla no vale la pena.
+
     W.RefreshEditBtn = RefreshEditBtn
     W.RefreshTestBtn = RefreshEditBtn
 
@@ -560,7 +492,6 @@ function engine:CreateConfigMenu()
         engine:UpdatePositions()
     end)
 
-    -- Destructive action: keeps the red game-menu style on purpose
     local resetAllBtn = CreateFrame("Button", nil, sc, "GameMenuButtonTemplate")
     resetAllBtn:SetSize(125, 24); resetAllBtn:SetPoint("LEFT", resetBtn, "RIGHT", 6, 0)
     resetAllBtn:SetText(L["RESET_ALL"] or "Reset All")
@@ -569,15 +500,12 @@ function engine:CreateConfigMenu()
 
     y = y - 30
 
-    -- Boton a la lista de hechizos. Va en Position porque es lo primero que
-    -- se toca despues de acomodar el marco.
     local spellsBtn = CreateThemeButton(sc, 256, 24, L["SPELL_LIST_BTN"] or "Spell list...")
     spellsBtn:SetPoint("TOPLEFT", LEFT, y)
     spellsBtn:SetScript("OnClick", function() engine:ToggleSpellList() end)
 
     y = y - 30
 
-    -- ==================== LAYOUT ====================
     y = CreateSection(sc, L["SECTION_LAYOUT"] or "Layout", y)
 
     local sortModes = {
@@ -586,7 +514,6 @@ function engine:CreateConfigMenu()
         {name = L["SORT_REMAIN_DESC"] or "Remaining (high to low)",   value = "remain_desc"},
     }
 
-    -- FIX #4: getter function reads live from DB
     W.sortDD = CreateDropdown(sc, "ECDSortDD", LEFT - 10, y, 200,
         L["CD_SORT_ORDER"] or "Sort Order:", sortModes,
         function() return EnemyCooldownsDB.sortMode or "cast" end,
@@ -621,10 +548,8 @@ function engine:CreateConfigMenu()
         L["FIXED_GROUPS_TIP"] or "Keeps each enemy's cooldown group in place when you change target (no reordering).")
     y = y - 52
 
-    -- ==================== PLAYER NAME FONT ====================
     y = CreateSection(sc, L["SECTION_PLAYER_NAME"] or "Player Name Font", y)
 
-    -- FIX #1: getter functions read live from DB
     W.pNameFontDD = CreateDropdown(sc, "ECDPNameFont", LEFT - 10, y, 160,
         L["FONT"] or "Font:", fontItems,
         function() return EnemyCooldownsDB.playerNameSettings.font end,
@@ -636,7 +561,6 @@ function engine:CreateConfigMenu()
         function(v) EnemyCooldownsDB.playerNameSettings.fontOutline = v; engine:UpdateAllPlayerNameFonts() end)
     y = y - 54
 
-    -- FIX #3: max 19 for player name font size
     W.pNameSize = CreateNUFSlider(sc, "ECDPNameSize", LEFT, y, HW, 8, 19, 1,
         EnemyCooldownsDB.playerNameSettings.fontSize or 12, L["FONT_SIZE"] or "Font Size",
         function(v) EnemyCooldownsDB.playerNameSettings.fontSize = v; engine:UpdateAllPlayerNameFonts() end)
@@ -646,7 +570,6 @@ function engine:CreateConfigMenu()
         function(v) EnemyCooldownsDB.showEnemyNames = v; engine:ApplyNameVisibilityToAll() end)
     y = y - 52
 
-    -- ==================== TIMER SETTINGS ====================
     y = CreateSection(sc, L["SECTION_TIMER"] or "Timer Settings", y)
 
     W.timerFontDD = CreateDropdown(sc, "ECDTimerFont", LEFT - 10, y, 160,
@@ -660,7 +583,6 @@ function engine:CreateConfigMenu()
         function(v) EnemyCooldownsDB.timerSettings.fontOutline = v; engine:UpdateAllIconFonts(); engine:RefreshAllTrackers() end)
     y = y - 54
 
-    -- FIX #3: max 19 for timer font size
     W.timerSize = CreateNUFSlider(sc, "ECDTimerSize", LEFT, y, HW, 8, 19, 1,
         EnemyCooldownsDB.timerSettings.fontSize or 14, L["FONT_SIZE"] or "Font Size",
         function(v) EnemyCooldownsDB.timerSettings.fontSize = v; engine:UpdateAllIconFonts(); engine:RefreshAllTrackers() end)
@@ -676,13 +598,11 @@ function engine:CreateConfigMenu()
         function(v) EnemyCooldownsDB.showCooldownSwipe = v; engine:UpdateAllCooldownSwipes() end)
     y = y - 32
 
-    -- Color swatches in a single row
     CreateColorBtn(sc, L["COLOR_NORMAL"]  or "Normal (>10s):",   LEFT, y, "colorNormal")
     CreateColorBtn(sc, L["COLOR_WARNING"] or "Warning (<=10s):", LEFT + 150, y, "color10s")
     CreateColorBtn(sc, L["COLOR_URGENT"]  or "Urgent (<=3s):",   LEFT + 300, y, "color3s")
     y = y - 32
 
-    -- ==================== ZONES ====================
     y = CreateSection(sc, L["SECTION_ZONES"] or "Enable In:", y)
 
     W.arenaCheck = CreateCheck(sc, LEFT, y, L["ZONE_ARENA"] or "Arena",
@@ -699,7 +619,6 @@ function engine:CreateConfigMenu()
 
     y = y - 26
 
-    -- Va en su propia fila: en la de arriba no entra sin apretujar las tres.
     W.duelCheck = CreateCheck(sc, LEFT, y, L["ZONE_DUEL"] or "Duel",
         EnemyCooldownsDB.enabledZones.duel ~= false,
         function(v) EnemyCooldownsDB.enabledZones.duel = v; engine:CheckZoneAndToggle() end)
@@ -709,9 +628,6 @@ function engine:CreateConfigMenu()
     configFrame:Hide()
 end
 
-------------------------------------------------------------------------
--- Slash commands
-------------------------------------------------------------------------
 SLASH_ENEMYCOOLDOWNS1 = "/ecd"
 SLASH_ENEMYCOOLDOWNS2 = "/enemycooldowns"
 
@@ -722,8 +638,7 @@ SlashCmdList["ENEMYCOOLDOWNS"] = function(msg)
     if msg == "config" or msg == "" then
         engine:CreateConfigMenu(); configFrame:Show()
     elseif msg == "lock" then
-        -- Se pasa por ToggleLock para que el modo test siga el mismo estado
-        -- (y el asa de arrastre se muestre/oculte bien).
+
         if not EnemyCooldownsDB.locked then engine:ToggleLock() end
     elseif msg == "unlock" then
         if EnemyCooldownsDB.locked then engine:ToggleLock() end
@@ -748,21 +663,7 @@ SlashCmdList["ENEMYCOOLDOWNS"] = function(msg)
         print(L["CMD_TEST"] or "  /ecd test - Toggle test mode (10 fake cooldowns)")
     end
 end
-------------------------------------------------------------------------
--- LISTA DE HECHIZOS
---
--- Ventana aparte con los 245 hechizos que sigue el addon, agrupados por
--- clase, cada uno con su casilla. Destildar uno hace que el addon deje de
--- anotarle el cooldown (ver el filtro en main.lua).
---
--- SE GUARDAN LOS APAGADOS, no los prendidos: la tabla queda casi siempre
--- vacia y un hechizo nuevo en spells.lua aparece prendido solo.
---
--- LAS FILAS SE CREAN UNA VEZ Y SE RECICLAN. Son 245: crear y destruir
--- marcos cada vez que se abre la ventana es tirar trabajo, y en 3.3.5a los
--- marcos no se destruyen de verdad igual. Se crean a demanda y despues
--- solo se les cambia el contenido.
-------------------------------------------------------------------------
+
 local spellListFrame
 
 local function BuildSpellList()
@@ -811,23 +712,6 @@ local function BuildSpellList()
     local rows = {}
     f.rows = rows
 
-    -- UNA FILA POR HECHIZO, NO POR ID.
-    --
-    -- En 3.3.5 cada RANGO de un hechizo tiene su propio ID, y SPELLS los
-    -- lista todos para cachar cualquiera que tire el enemigo: Frost Nova
-    -- tiene 6, Blast Wave 8. GetSpellInfo devuelve el mismo nombre para
-    -- todos, asi que la lista mostraba "Frost Nova" seis veces seguidas.
-    --
-    -- Se agrupan por nombre y la casilla mueve TODOS los rangos de una, que
-    -- es lo que uno quiere: nadie quiere seguir el rango 3 de Frost Nova y
-    -- no el 5.
-    --
-    -- La clave es GRUPO + NOMBRE, no el nombre solo: "Pummel", "Charge" e
-    -- "Intervene" existen en dos secciones distintas (mascota de cazador y
-    -- guerrero) y son cooldowns diferentes.
-    --
-    -- Los IDs que GetSpellInfo no conoce son hechizos que no existen en
-    -- este cliente. Van al final, cada uno por su lado, para que se vean.
     local ordered = {}
     do
         local UNKNOWN = L["SPELL_GROUP_UNKNOWN"] or "NOT IN THIS CLIENT"
@@ -841,7 +725,6 @@ local function BuildSpellList()
             byGroup[g] = byGroup[g] or { list = {}, byName = {} }
             local bucket = byGroup[g]
 
-            -- Sin nombre no se puede agrupar: cada uno va solo.
             local key = name or ("#" .. id)
             local e = (name and bucket.byName[key]) or nil
             if e then
@@ -861,8 +744,7 @@ local function BuildSpellList()
         for _, g in ipairs(order) do
             local bucket = byGroup[g]
             if bucket then
-                -- Orden alfabetico estable. Sin ordenar, pairs() devolveria
-                -- los hechizos distinto en cada sesion y la lista saltaria.
+
                 table.sort(bucket.list, function(x, z)
                     if x.name == z.name then return x.ids[1] < z.ids[1] end
                     return x.name < z.name
@@ -873,9 +755,6 @@ local function BuildSpellList()
         end
     end
 
-    -- Si el modo edicion esta prendido, se rehacen los iconos de prueba para
-    -- que el cambio se vea en el momento. Fuera de ese modo no hay nada que
-    -- refrescar: el filtro pega en el proximo hechizo que salte.
     local function ApplyFilterNow()
         if engine:IsTestModeActive() then
             engine:StopTestMode()
@@ -888,8 +767,6 @@ local function BuildSpellList()
         return EnemyCooldownsDB.disabledSpells
     end
 
-    -- Una fila cuenta como prendida mientras quede AL MENOS un rango
-    -- prendido. Solo se ve destildada cuando estan todos apagados.
     local function RefreshChecks()
         local off = Disabled()
         for _, r in ipairs(rows) do
@@ -902,12 +779,6 @@ local function BuildSpellList()
     end
     f.RefreshChecks = RefreshChecks
 
-    -- MEDIDAS DE LA LISTA, EN UN SOLO LUGAR.
-    --
-    -- ROW_BOX es el lado de la casilla y ROW_STEP lo que baja el cursor por
-    -- fila. El paso tiene que ser MAYOR que la casilla: el template mide 26
-    -- de lado, asi que con paso 22 cada casilla se metia 4 px en la fila de
-    -- abajo.
     local ROW_BOX, ROW_STEP, HDR_STEP = 22, 24, 20
 
     local yy = -2
@@ -922,31 +793,13 @@ local function BuildSpellList()
                 "InterfaceOptionsCheckButtonTemplate")
             row:SetPoint("TOPLEFT", 10, yy)
 
-            -- NADA DE SetScale ACA.
-            --
-            -- Los offsets de SetPoint se miden en la escala DEL PROPIO
-            -- FRAME, no en la del padre. Con escala 0.85 la casilla
-            -- aterrizaba en 0.85 * yy, mientras el encabezado, el icono y
-            -- el nombre -- hijos de sc, sin escala -- aterrizaban en yy.
-            -- La separacion crecia un 15% por cada fila que bajabas:
-            -- invisible arriba, media docena de filas en el medio (por eso
-            -- las casillas tapaban los nombres de clase) y 601 px al final
-            -- de la lista, donde los ultimos hechizos quedaban sin ninguna
-            -- casilla debajo.
-            --
-            -- Se achica por MEDIDA y no por escala. Las texturas del
-            -- template (UI-CheckBox-Up, -Down, -Highlight, -Check) no
-            -- tienen anclas propias: llenan el boton, asi que se achican
-            -- con el. La escala queda en 1 y yy vuelve a significar lo
-            -- mismo para todos.
             row:SetWidth(ROW_BOX)
             row:SetHeight(ROW_BOX)
             row.ids = item.ids
 
             local tex = sc:CreateTexture(nil, "ARTWORK")
             tex:SetSize(16, 16)
-            -- -3 y no -4: centra el icono contra la casilla, que mide
-            -- ROW_BOX y arranca en yy.
+
             tex:SetPoint("TOPLEFT", 40, yy - 3)
             if item.icon then tex:SetTexture(item.icon) end
             tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
@@ -960,8 +813,6 @@ local function BuildSpellList()
             lbl:SetPoint("LEFT", tex, "RIGHT", 5, 0)
             lbl:SetText(label)
 
-            -- El texto de la plantilla queda vacio: la etiqueta va afuera,
-            -- al lado del icono, si no el icono se le monta encima.
             local t = _G[row:GetName() .. "Text"]
             if t then t:SetText("") end
 
@@ -1007,7 +858,6 @@ local function BuildSpellList()
         ApplyFilterNow()
     end)
 
-    -- Que Escape la cierre, como la ventana de opciones.
     table.insert(UISpecialFrames, "ECDSpellListFrame")
 
     RefreshChecks()

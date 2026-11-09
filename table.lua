@@ -5,7 +5,6 @@ local next = next
 local type = type
 local table_remove = table.remove
 
-
 local function table_getKeyByValue(tbl,value)
 	for k,v in next,tbl do
 		if v == value then
@@ -45,7 +44,7 @@ do
 
 	table_del = function(t)
 		table_wipe(t)
-		cache[#cache+1] = t	
+		cache[#cache+1] = t
 	end
 end
 

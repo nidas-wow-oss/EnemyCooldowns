@@ -4,7 +4,6 @@ local COMBATLOG_OBJECT_REACTION_NEUTRAL = COMBATLOG_OBJECT_REACTION_NEUTRAL
 local COMBATLOG_OBJECT_REACTION_HOSTILE = COMBATLOG_OBJECT_REACTION_HOSTILE
 local COMBATLOG_OBJECT_REACTION_MASK = COMBATLOG_OBJECT_REACTION_MASK
 
--- Affiliation flags: used to filter out party/raid members under Mind Control
 local COMBATLOG_OBJECT_AFFILIATION_MINE  = COMBATLOG_OBJECT_AFFILIATION_MINE
 local COMBATLOG_OBJECT_AFFILIATION_PARTY = COMBATLOG_OBJECT_AFFILIATION_PARTY
 local COMBATLOG_OBJECT_AFFILIATION_RAID  = COMBATLOG_OBJECT_AFFILIATION_RAID
@@ -17,7 +16,6 @@ local bit = bit
 local next = next
 local GetTime = GetTime
 
--- Exported layout values (overridden by SavedVariables in InitConfig)
 engine.ICONS_AT_COLUMN = 6
 engine.ICON_SPACING = 6
 engine.ICON_OFFSET_X = 25
@@ -29,19 +27,14 @@ local cooldownInfo, GUID2name = {}, {}
 local addonEnabled = false
 local targetGUID
 
--- Memory cleanup state
 local lastSeenGUID = {}
 local lastCleanupTime = 0
-local CLEANUP_INTERVAL = 30   -- seconds between cleanup passes
-local GUID_TIMEOUT = 300      -- remove GUIDs inactive for 5 minutes
+local CLEANUP_INTERVAL = 30
+local GUID_TIMEOUT = 300
 
--- Expose for other files
 engine.trackers = trackers
 engine.addonEnabled = addonEnabled
 
-------------------------------------------------------------------------
--- Helper: get a config value with a fallback default
-------------------------------------------------------------------------
 function engine:GetConfigValue(key, subkey, default)
     if not EnemyCooldownsDB then return default end
 
@@ -59,9 +52,6 @@ function engine:GetConfigValue(key, subkey, default)
     end
 end
 
-------------------------------------------------------------------------
--- Class colors
-------------------------------------------------------------------------
 do
     local function RGBPercToHex(r, g, b)
         r = (r >= 0 and r <= 1) and r or 0
@@ -80,31 +70,12 @@ do
     end
 end
 
-------------------------------------------------------------------------
--- Sanitize RESETTERS: remove entries that aren't valid tables
-------------------------------------------------------------------------
 for k, v in pairs(RESETTERS) do
     if type(v) ~= "table" then
         RESETTERS[k] = nil
     end
 end
 
-------------------------------------------------------------------------
--- Zone detection and addon toggle
-------------------------------------------------------------------------
--- EL DUELO NO ES UNA ZONA, ES UN ESTADO.
---
--- Los duelos pasan en el mundo, asi que con "Mundo" apagado no se seguian.
--- Prender "Mundo" para duelar significa tenerlo prendido tambien mientras
--- haces quests, que es justo el ruido que uno quiere evitar. Por eso el
--- duelo va aparte: se cuenta como zona propia mientras dura, y al terminar
--- se vuelve a mandar por la regla de "Mundo".
---
--- COMO SE DETECTA. DUEL_FINISHED avisa el final a los dos participantes y
--- es confiable. El arranque no: DUEL_REQUESTED solo le llega a QUIEN
--- RECIBE el desafio, el que lo manda no recibe nada. Por eso hay dos vias:
--- el evento para el retado, y como respaldo entrar en combate contra un
--- JUGADOR estando en el mundo, que cubre al que desafia.
 local duelActive = false
 
 function engine:IsDuelActive()
@@ -172,9 +143,6 @@ function engine:CheckZoneAndToggle()
     end
 end
 
-------------------------------------------------------------------------
--- Memory cleanup: prune stale GUIDs periodically
-------------------------------------------------------------------------
 function engine:CleanupMemory()
     local now = GetTime()
     if now - lastCleanupTime < CLEANUP_INTERVAL then return end
@@ -200,11 +168,6 @@ function engine:CleanupMemory()
     end
 end
 
-------------------------------------------------------------------------
--- Cooldown data management
-------------------------------------------------------------------------
-
--- Remove expired cooldowns for a given key
 function engine:Cleanup(key)
     local info = cooldownInfo[key]
     if not info then return end
@@ -257,9 +220,6 @@ function engine:ResetCooldownInfo()
     table.wipe(lastSeenGUID)
 end
 
-------------------------------------------------------------------------
--- Tracker management
-------------------------------------------------------------------------
 function engine:GetTrackerKey(srcGUID)
     return srcGUID
 end
@@ -340,33 +300,27 @@ function engine:UpdatePositions()
     end
 end
 
-------------------------------------------------------------------------
--- Test mode: shows 30 fake cooldowns (10 Mage + 10 Warrior + 10 DK)
-------------------------------------------------------------------------
 local testModeActive = false
 local TEST_UNITS = {
     {
         guid = "ECD-TEST-MAGE",
         name = "TestMage",
         class = "MAGE",
-        -- Ice Block, Evocation, Cold Snap, Deep Freeze, Counterspell,
-        -- Blink, Ice Barrier, Dragon's Breath, Blast Wave, Arcane Power
+
         spells = {45438, 12051, 11958, 44572, 2139, 1953, 43039, 42950, 42945, 12042},
     },
     {
         guid = "ECD-TEST-WARRIOR",
         name = "TestWarrior",
         class = "WARRIOR",
-        -- Shield Wall, Recklessness, Death Wish, Bladestorm, Disarm,
-        -- Spell Reflection, Intimidating Shout, Concussion Blow, Shockwave, Enraged Regeneration
+
         spells = {871, 1719, 12292, 46924, 676, 23920, 5246, 12809, 46968, 55694},
     },
     {
         guid = "ECD-TEST-DEATHKNIGHT",
         name = "TestDK",
         class = "DEATHKNIGHT",
-        -- Lichborne, Strangulate, Anti-Magic Shell, Death Grip, Mind Freeze,
-        -- Icebound Fortitude, Anti-Magic Zone, Hungering Cold, Dancing Rune Weapon, Summon Gargoyle
+
         spells = {49039, 47476, 48707, 49576, 47528, 48792, 51052, 49203, 49028, 49206},
     },
 }
@@ -388,13 +342,12 @@ function engine:StartTestMode()
         local key = self:GetTrackerKey(unit.guid)
         for i = 1, #unit.spells do
             local spellID = unit.spells[i]
-            -- El test tambien respeta el filtro: si no, mostraria iconos que
-            -- en combate no van a aparecer nunca.
+
             local off = EnemyCooldownsDB and EnemyCooldownsDB.disabledSpells
                 and EnemyCooldownsDB.disabledSpells[spellID]
             if not off then
                 local duration = SPELLS[spellID] or 60
-                -- castTime staggered so "cast order" sorting shows them in list order
+
                 self:AddCooldown(key, spellID, now + duration, now - i)
             end
         end
@@ -427,9 +380,6 @@ function engine:ToggleTestMode()
     end
 end
 
-------------------------------------------------------------------------
--- Combat log event handler
-------------------------------------------------------------------------
 function engine:COMBAT_LOG_EVENT_UNFILTERED(_, subEvent, ...)
     if not addonEnabled then return end
 
@@ -442,7 +392,6 @@ function engine:COMBAT_LOG_EVENT_UNFILTERED(_, subEvent, ...)
             return
         end
 
-        -- Skip party/raid members (catches Mind Control: reaction flips but affiliation stays)
         local affiliation = bit.band(srcFlags, COMBATLOG_OBJECT_AFFILIATION_MASK)
         if affiliation == COMBATLOG_OBJECT_AFFILIATION_MINE
         or affiliation == COMBATLOG_OBJECT_AFFILIATION_PARTY
@@ -452,7 +401,6 @@ function engine:COMBAT_LOG_EVENT_UNFILTERED(_, subEvent, ...)
 
         lastSeenGUID[srcGUID] = GetTime()
 
-        -- Cache colored display name (strip realm from "Name-Realm")
         if not GUID2name[srcGUID] then
             local _, class = GetPlayerInfoByGUID(srcGUID)
             local color = CLASS2HEXCOLOR[class or "none"]
@@ -463,18 +411,12 @@ function engine:COMBAT_LOG_EVENT_UNFILTERED(_, subEvent, ...)
         local now = GetTime()
         local updated = false
 
-        -- Check if this spell resets other cooldowns
         local resetList = RESETTERS[spellID]
         if resetList and #resetList > 0 then
             self:RemoveCooldown(key, resetList)
             updated = true
         end
 
-        -- Check if this spell itself has a tracked cooldown
-        --
-        -- FILTRO DEL USUARIO. Se comprueba aca y no al dibujar: si el
-        -- hechizo esta apagado ni siquiera se anota el cooldown, asi que no
-        -- ocupa lugar ni hay que acordarse de saltearlo despues.
         local duration = SPELLS[spellID]
         if duration and not (EnemyCooldownsDB and EnemyCooldownsDB.disabledSpells
             and EnemyCooldownsDB.disabledSpells[spellID]) then
@@ -488,16 +430,11 @@ function engine:COMBAT_LOG_EVENT_UNFILTERED(_, subEvent, ...)
     end
 end
 
-------------------------------------------------------------------------
--- Target changed: promote current target's tracker to first position
-------------------------------------------------------------------------
 function engine:PLAYER_TARGET_CHANGED()
     if not addonEnabled then return end
 
-    -- BUG FIX: simplified — just set the new target directly
     targetGUID = UnitGUID("target")
 
-    -- Fixed groups: never reorder trackers on target change
     if EnemyCooldownsDB and EnemyCooldownsDB.fixedGroups then return end
 
     if targetGUID and trackers[targetGUID] then
@@ -507,9 +444,6 @@ function engine:PLAYER_TARGET_CHANGED()
     end
 end
 
-------------------------------------------------------------------------
--- Zone change: wipe state and re-evaluate whether the addon should run
-------------------------------------------------------------------------
 function engine:PLAYER_ENTERING_WORLD()
     testModeActive = false
     self:ReleaseAllTrackers()
@@ -517,16 +451,12 @@ function engine:PLAYER_ENTERING_WORLD()
     self:CheckZoneAndToggle()
 end
 
-------------------------------------------------------------------------
--- Addon loaded: initialize config and start cleanup timer
-------------------------------------------------------------------------
 function engine:ADDON_LOADED(addonName)
     if addonName ~= ADDON_NAME then return end
 
     self:InitConfig()
     self:CheckZoneAndToggle()
 
-    -- Periodic memory cleanup (WotLK compatible, no C_Timer)
     local cleanupFrame = CreateFrame("Frame")
     local elapsed = 0
     cleanupFrame:SetScript("OnUpdate", function(_, dt)
@@ -541,14 +471,6 @@ function engine:ADDON_LOADED(addonName)
     if L then print(L["ADDON_LOADED"]) end
 end
 
-------------------------------------------------------------------------
--- Duelos
---
--- DUEL_FINISHED es fiable y le llega a los dos. El arranque no:
--- DUEL_REQUESTED solo lo recibe QUIEN ES DESAFIADO. Por eso el respaldo de
--- entrar en combate contra un jugador en el mundo, que es lo que cubre al
--- que manda el desafio.
-------------------------------------------------------------------------
 function engine:DUEL_REQUESTED()
     self:SetDuelActive(true)
 end
@@ -560,21 +482,17 @@ end
 function engine:PLAYER_REGEN_DISABLED()
     if self:IsDuelActive() then return end
     if IsInInstance() then return end
-    -- Solo contra JUGADORES: pegarle a un bicho no es un duelo.
+
     if UnitExists("target") and UnitIsPlayer("target") and UnitCanAttack("player", "target") then
         self:SetDuelActive(true)
     end
 end
 
 function engine:PLAYER_REGEN_ENABLED()
-    -- Red de seguridad. Lo normal es que DUEL_FINISHED lo apague antes; esto
-    -- esta para que no quede prendido para siempre si ese evento no llega.
+
     self:SetDuelActive(false)
 end
 
-------------------------------------------------------------------------
--- Event dispatcher
-------------------------------------------------------------------------
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("DUEL_REQUESTED")
@@ -585,5 +503,4 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
     engine[event](engine, ...)
 end)
 
--- Keep the combat log buffer indefinitely so we don't miss events
 CombatLogSetRetentionTime(-1)

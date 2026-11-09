@@ -11,7 +11,6 @@ local setmetatable = setmetatable
 local prototype = setmetatable({}, getmetatable(UIParent))
 local MT = {__index = prototype}
 
--- Sort cooldowns based on configured sort mode
 local function SortCooldowns(a, b)
     local mode = (EnemyCooldownsDB and EnemyCooldownsDB.sortMode) or "cast"
 
@@ -27,7 +26,7 @@ local function SortCooldowns(a, b)
         end
         return a.castTime > b.castTime
 
-    else -- "cast" (default): most recent first
+    else
         if a.castTime ~= b.castTime then
             return a.castTime > b.castTime
         end
@@ -35,7 +34,6 @@ local function SortCooldowns(a, b)
     end
 end
 
--- Rebuild icon layout from cooldown info
 function prototype:Update(cooldownInfo)
     if not cooldownInfo then
         engine:ReleaseTracker(self.GUID)
@@ -44,9 +42,8 @@ function prototype:Update(cooldownInfo)
 
     local ICONS_AT_COLUMN = engine.ICONS_AT_COLUMN or 6
     local OFFSET_Y = engine.ICON_SPACING or 6
-    local OFFSET_X = engine.ICON_OFFSET_X or 25  -- NEW: configurable X spacing between columns
+    local OFFSET_X = engine.ICON_OFFSET_X or 25
 
-    -- Build sorted list
     local cdList = table.new()
     local n = 0
     for spellID, data in next, cooldownInfo do
@@ -60,7 +57,6 @@ function prototype:Update(cooldownInfo)
 
     table.sort(cdList, SortCooldowns)
 
-    -- Stable icons by spellID
     local iconsBySpell = self.iconsBySpell
     if not iconsBySpell then
         iconsBySpell = {}
@@ -96,7 +92,6 @@ function prototype:Update(cooldownInfo)
         icon:SetCooldown(cd.timeEnd, spellID)
     end
 
-    -- Hide icons whose spells are no longer on cooldown
     for spid, iconFrame in next, iconsBySpell do
         if iconFrame:IsShown() and not used[spid] then
             iconFrame:Hide()
@@ -104,14 +99,12 @@ function prototype:Update(cooldownInfo)
         end
     end
 
-    -- Recycle temp tables
     for i = 1, n do
         cdList[i] = table.del(cdList[i])
     end
     table.del(cdList)
     table.del(used)
 
-    -- Resize group frame
     local numColumns = math.ceil(shownN / ICONS_AT_COLUMN)
     if numColumns < 1 then numColumns = 1 end
     self:SetWidth(numColumns * (ICONS_SIZE + OFFSET_X))
@@ -120,7 +113,6 @@ function prototype:Update(cooldownInfo)
     self:SetHeight(math.max(numRows * (ICONS_SIZE + OFFSET_Y), 1))
 end
 
--- Hide all icons
 function prototype:HideIcons()
     if not self.iconsBySpell then return end
     for _, icon in next, self.iconsBySpell do
@@ -131,7 +123,6 @@ function prototype:HideIcons()
     end
 end
 
--- Apply player name font settings
 function prototype:UpdateNameFont()
     local db = EnemyCooldownsDB
     if not db or not db.playerNameSettings then
@@ -147,7 +138,6 @@ function prototype:UpdateNameFont()
     )
 end
 
--- Initialize this group for a GUID
 function prototype:Initialize(GUID, unitName)
     self.name:SetText(unitName)
     self.GUID = GUID
@@ -165,14 +155,12 @@ function prototype:Initialize(GUID, unitName)
     self:Show()
 end
 
--- Release back to pool
 function prototype:Release()
     self:HideIcons()
     self.GUID = nil
     self:Hide()
 end
 
--- Factory: create a new tracker group
 function engine:CreateGroup()
     local frame = setmetatable(CreateFrame("Frame", nil, UIParent), MT)
     frame:SetHeight(1)
@@ -187,7 +175,6 @@ function engine:CreateGroup()
     return frame
 end
 
--- Update name fonts on all active trackers
 function engine:UpdateAllPlayerNameFonts()
     for _, tracker in pairs(self.trackers or {}) do
         if tracker and tracker.UpdateNameFont then
